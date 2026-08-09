@@ -14,7 +14,6 @@ namespace SnakeGiuJu
 
         readonly Transform root;
         readonly Material material;
-        readonly Color color;
         readonly float width;
         readonly float pointSpacing;
         readonly List<Vector3> points = new List<Vector3>(PointsPerChunk);
@@ -22,14 +21,17 @@ namespace SnakeGiuJu
 
         LineRenderer active;
 
+        /// <summary>Farbe der Linie. Wirkt ab dem naechsten <see cref="Restart"/>.</summary>
+        public Color Color { get; set; }
+
         public TrailPainter(Transform parent, Material material, Color color, float width, float pointSpacing)
         {
             root = new GameObject("Trail").transform;
             root.SetParent(parent, false);
             this.material = material;
-            this.color = color;
             this.width = width;
             this.pointSpacing = pointSpacing;
+            Color = color;
         }
 
         public void Restart(Vector2 start)
@@ -80,8 +82,8 @@ namespace SnakeGiuJu
             active.textureMode = LineTextureMode.Stretch;
             active.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             active.receiveShadows = false;
-            active.startColor = color;
-            active.endColor = color;
+            active.startColor = Color;
+            active.endColor = Color;
 
             points.Clear();
             points.Add(start);

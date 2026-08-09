@@ -1,10 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SnakeGiuJu
 {
     public enum GameState
     {
-        Ready,
+        CharacterSelect,
         Playing,
         GameOver
     }
@@ -22,8 +23,10 @@ namespace SnakeGiuJu
         [SerializeField] Shader lineShader;
         [SerializeField] Color backgroundColor = new Color(0.043f, 0.055f, 0.078f, 1f);
         [SerializeField] Color borderColor = new Color(0.298f, 0.361f, 0.482f, 1f);
-        [SerializeField] Color trailColor = new Color(0.220f, 0.882f, 0.690f, 1f);
         [SerializeField] Color headColor = new Color(1f, 1f, 1f, 1f);
+
+        [Header("Charaktere")]
+        [SerializeField] CharacterDefinition[] characters;
 
         [Header("Arena")]
         [SerializeField] float arenaHeight = 20f;
@@ -45,16 +48,22 @@ namespace SnakeGiuJu
         Rect arena;
         float accumulator;
         float stateChangedAt;
+        int selectedIndex;
 
-        public GameState State { get; private set; } = GameState.Ready;
+        public GameState State { get; private set; } = GameState.CharacterSelect;
         public float Distance => player?.Distance ?? 0f;
         public float BestDistance { get; private set; }
         public DeathCause Cause => player?.Cause ?? DeathCause.None;
+
+        public IReadOnlyList<CharacterDefinition> Characters => characters;
+        public int SelectedIndex => selectedIndex;
+        public CharacterDefinition Selected => characters[selectedIndex];
 
         void Awake()
         {
             Application.targetFrameRate = 60;
             BestDistance = PlayerPrefs.GetFloat(BestDistanceKey, 0f);
+            EnsureCharacters();
 
             cam = Camera.main;
             cam.orthographic = true;
@@ -70,21 +79,27 @@ namespace SnakeGiuJu
             CreateBorder();
             CreateHead();
 
-            trail = new TrailPainter(transform, lineMaterial, trailColor, lineWidth, lineWidth * 0.5f);
+            trail = new TrailPainter(transform, lineMaterial, Selected.color, lineWidth, lineWidth * 0.5f);
             gameObject.AddComponent<Hud>().Bind(this);
 
+            // Noch keine Runde aufsetzen: vor der ersten Auswahl soll weder Kopf
+            // noch Linie im Spielfeld stehen.
             BuildArena();
-            ResetRound();
+            SetState(GameState.CharacterSelect);
         }
 
         void Update()
         {
+            // Zwischen den Runden die Arena an die Fenstergröße nachziehen, damit der
+            // Rahmen nicht beim Start umspringt. Während einer Runde nicht anfassen:
+            // das würde die schon gezogene Linie verlieren.
+            if (State != GameState.Playing) BuildArena();
             FitCamera();
 
             switch (State)
             {
-                case GameState.Ready:
-                    if (SteeringInput.ConfirmPressed()) SetState(GameState.Playing);
+                case GameState.CharacterSelect:
+                    UpdatePicker(0f);
                     break;
 
                 case GameState.Playing:
@@ -93,13 +108,26 @@ namespace SnakeGiuJu
 
                 case GameState.GameOver:
                     // Kurze Sperre, damit der Tipp, der zum Tod geführt hat, nicht sofort neu startet.
-                    if (Time.time - stateChangedAt > 0.5f && SteeringInput.ConfirmPressed())
-                    {
-                        ResetRound();
-                        SetState(GameState.Playing);
-                    }
+                    UpdatePicker(0.5f);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Charakterauswahl: links wählt den ersten, rechts den letzten Charakter – dieselbe
+        /// Geste wie das Lenken im Spiel. Ein Tipp wählt und startet in einem Zug, auf der
+        /// Tastatur wählen die Pfeiltasten und die Leertaste bestätigt.
+        /// </summary>
+        void UpdatePicker(float guardSeconds)
+        {
+            int steering = SteeringInput.ReadSteering();
+            if (steering != 0) selectedIndex = steering < 0 ? 0 : characters.Length - 1;
+
+            if (Time.time - stateChangedAt < guardSeconds) return;
+            if (!SteeringInput.ConfirmPressed()) return;
+
+            ResetRound();
+            SetState(GameState.Playing);
         }
 
         void Simulate()
@@ -132,25 +160,56 @@ namespace SnakeGiuJu
         {
             State = state;
             stateChangedAt = Time.time;
+            // Vor der ersten Runde gibt es noch nichts zu zeigen - der Kopf soll
+            // nicht als loser Punkt hinter dem Auswahlscreen stehen.
+            head.gameObject.SetActive(state != GameState.CharacterSelect);
         }
 
         void ResetRound()
         {
+            BuildArena();
             grid.Clear();
             accumulator = 0f;
+            trail.Color = Selected.color;
             player.Spawn(Vector2.zero, Random.Range(0f, 360f));
             trail.SetHead(player.Position);
             head.position = new Vector3(player.Position.x, player.Position.y, -0.2f);
         }
 
+        /// <summary>
+        /// Fällt auf zwei Standardcharaktere zurück, falls die Szene keine liefert –
+        /// ohne sie hätte der Auswahlscreen nichts zu zeigen.
+        /// </summary>
+        void EnsureCharacters()
+        {
+            if (characters == null || characters.Length < 2)
+            {
+                Debug.LogWarning("Keine Charaktere in der Szene gesetzt, benutze Standardfarben ohne Bilder.");
+                characters = new[]
+                {
+                    new CharacterDefinition { displayName = "Giu", color = new Color(0.133f, 0.890f, 1f, 1f) },
+                    new CharacterDefinition { displayName = "Ju", color = new Color(1f, 0.247f, 0.816f, 1f) }
+                };
+            }
+
+            selectedIndex = Mathf.Clamp(selectedIndex, 0, characters.Length - 1);
+        }
+
+        /// <summary>
+        /// Legt die Arena auf das aktuelle Seitenverhältnis aus. Wird vor jeder Runde
+        /// aufgerufen, denn im Browser steht die endgültige Canvas-Größe beim Start des
+        /// Spiels noch nicht fest – und zwischen zwei Runden kann sich das Fenster ändern.
+        /// </summary>
         void BuildArena()
         {
             // Die Arena übernimmt das Seitenverhältnis des Bildschirms, bleibt aber in
             // Grenzen spielbar – ein sehr schmales Hochformat wäre sonst kaum steuerbar.
             float aspect = Mathf.Clamp(Screen.width / (float)Mathf.Max(Screen.height, 1), 0.55f, 2.4f);
             float width = arenaHeight * aspect;
-            arena = new Rect(-width * 0.5f, -arenaHeight * 0.5f, width, arenaHeight);
 
+            if (grid != null && Mathf.Abs(width - arena.width) < 0.01f) return;
+
+            arena = new Rect(-width * 0.5f, -arenaHeight * 0.5f, width, arenaHeight);
             grid = new ArenaGrid(arena, cellSize);
             player = new CurvePlayer(grid, trail, lineWidth * 0.5f, moveSpeed, minTurnRadius);
 

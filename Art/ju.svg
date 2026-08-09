@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="head"><ellipse cx="256" cy="230" rx="120" ry="110"/></clipPath>
+  </defs>
+  <g transform="translate(512,0) scale(-1,1)">
+  <g>
+    <!-- Neonschein -->
+    <circle cx="256" cy="268" r="232" fill="#FF3FD0" opacity="0.13"/>
+    <circle cx="256" cy="268" r="206" fill="#FF3FD0" opacity="0.18"/>
+
+    <!-- Schwanzspitze -->
+    <path d="M 108 462 C 44 460 36 396 80 380 C 104 372 120 388 114 404"
+          fill="none" stroke="#0A0C12" stroke-width="40" stroke-linecap="round"/>
+    <path d="M 108 462 C 44 460 36 396 80 380 C 104 372 120 388 114 404"
+          fill="none" stroke="#FF3FD0" stroke-width="24" stroke-linecap="round"/>
+
+    <!-- untere Windung -->
+    <rect x="92" y="390" width="330" height="86" rx="43" fill="#0A0C12"/>
+    <rect x="104" y="402" width="306" height="62" rx="31" fill="#FF3FD0"/>
+    <path d="M 118 446 q 138 30 276 0 q -138 22 -276 0 z" fill="#A81287"/>
+
+    <!-- obere Windung -->
+    <rect x="128" y="322" width="256" height="84" rx="42" fill="#0A0C12"/>
+    <rect x="140" y="334" width="232" height="60" rx="30" fill="#FF3FD0"/>
+    <path d="M 152 378 q 108 26 208 0 q -104 20 -208 0 z" fill="#A81287"/>
+
+    <path d="M 256 128 C 250 60 300 34 330 62 C 352 82 336 116 312 106" fill="none" stroke="#0A0C12" stroke-width="34" stroke-linecap="round"/>
+    <path d="M 256 128 C 250 60 300 34 330 62 C 352 82 336 116 312 106" fill="none" stroke="#FF3FD0" stroke-width="20" stroke-linecap="round"/>
+
+    <!-- Kopf -->
+    <ellipse cx="256" cy="230" rx="134" ry="124" fill="#0A0C12"/>
+    <ellipse cx="256" cy="230" rx="120" ry="110" fill="#FF3FD0"/>
+    <g clip-path="url(#head)">
+      <ellipse cx="372" cy="336" rx="156" ry="146" fill="#A81287" opacity="0.9"/>
+      <ellipse cx="182" cy="146" rx="86" ry="66" fill="#FFC2F0" opacity="0.5"/>
+    </g>
+
+    <!-- Brauen, bewusst innerhalb der Kopfsilhouette -->
+    <path d="M 178 160 L 238 178" stroke="#0A0C12" stroke-width="17" stroke-linecap="round"/>
+    <path d="M 274 178 L 334 160" stroke="#0A0C12" stroke-width="17" stroke-linecap="round"/>
+
+    <!-- Augen -->
+    <ellipse cx="206" cy="216" rx="41" ry="47" fill="#FFFFFF" stroke="#0A0C12" stroke-width="11"/>
+    <ellipse cx="306" cy="216" rx="41" ry="47" fill="#FFFFFF" stroke="#0A0C12" stroke-width="11"/>
+    <circle cx="219" cy="222" r="20" fill="#0A0C12"/>
+    <circle cx="319" cy="222" r="20" fill="#0A0C12"/>
+    <circle cx="211" cy="212" r="8" fill="#FFFFFF"/>
+    <circle cx="311" cy="212" r="8" fill="#FFFFFF"/>
+
+    <!-- Nasenloecher -->
+    <circle cx="238" cy="266" r="7" fill="#0A0C12"/>
+    <circle cx="274" cy="266" r="7" fill="#0A0C12"/>
+
+    <!-- Grinsen und Zunge -->
+    <path d="M 202 288 q 54 48 108 0" fill="none" stroke="#0A0C12"
+          stroke-width="15" stroke-linecap="round"/>
+    <path d="M 256 310 L 256 330" stroke="#FF3B5C" stroke-width="12" stroke-linecap="round"/>
+    <path d="M 256 330 L 243 344" stroke="#FF3B5C" stroke-width="12" stroke-linecap="round"/>
+    <path d="M 256 330 L 269 344" stroke="#FF3B5C" stroke-width="12" stroke-linecap="round"/>
+  </g>
+  </g>
+</svg>

@@ -3,12 +3,11 @@ using UnityEngine;
 namespace SnakeGiuJu
 {
     /// <summary>
-    /// Bildschirmtexte über IMGUI – braucht keine Fonts oder Prefabs und skaliert
-    /// dadurch ohne Zutun auf Handy- wie Desktop-Auflösungen.
+    /// Bildschirmtexte und Charakterauswahl über IMGUI – braucht keine Fonts oder
+    /// Prefabs und skaliert dadurch ohne Zutun auf Handy- wie Desktop-Auflösungen.
     /// </summary>
     public sealed class Hud : MonoBehaviour
     {
-        static readonly Color Accent = new Color(0.220f, 0.882f, 0.690f, 1f);
         static readonly Color Muted = new Color(0.72f, 0.77f, 0.85f, 1f);
 
         GameManager game;
@@ -17,6 +16,7 @@ namespace SnakeGiuJu
         GUIStyle title;
         GUIStyle subtitle;
         GUIStyle call;
+        GUIStyle characterName;
         GUIStyle zoneLeft;
         GUIStyle zoneRight;
         int builtForHeight = -1;
@@ -34,13 +34,24 @@ namespace SnakeGiuJu
             float margin = Mathf.Min(w, h) * 0.04f;
             var bar = new Rect(margin, margin, w - margin * 2f, h * 0.06f);
 
-            GUI.Label(bar, $"Länge  {game.Distance:0} m", score);
+            // Der Akzent folgt dem gewählten Charakter.
+            Color accent = game.Selected.color;
+            score.normal.textColor = accent;
+            call.normal.textColor = accent;
+
+            if (game.State != GameState.CharacterSelect)
+            {
+                GUI.Label(bar, $"Länge  {game.Distance:0} m", score);
+            }
             GUI.Label(bar, $"Rekord  {game.BestDistance:0} m", best);
 
             switch (game.State)
             {
-                case GameState.Ready:
-                    DrawCentered("SNAKE GIU JU", Steuerhinweis(), "Tippen oder Leertaste zum Start");
+                case GameState.CharacterSelect:
+                    GUI.Label(TextRect(w, h, 0.10f, 0.11f), "SNAKE GIU JU", title);
+                    GUI.Label(TextRect(w, h, 0.21f, 0.10f), Steuerhinweis(), subtitle);
+                    DrawPicker(w, h, 0.52f);
+                    GUI.Label(TextRect(w, h, 0.78f, 0.10f), Auswahlhinweis(), call);
                     break;
 
                 case GameState.Playing:
@@ -48,21 +59,66 @@ namespace SnakeGiuJu
                     break;
 
                 case GameState.GameOver:
-                    string reason = game.Cause == DeathCause.Wall ? "Gegen den Rand gefahren" : "In eine Kurve gefahren";
-                    DrawCentered("AUS", $"{reason} · {game.Distance:0} m", "Tippen oder Leertaste für neue Runde");
+                    string reason = game.Cause == DeathCause.Wall
+                        ? "Gegen den Rand gefahren"
+                        : "In eine Kurve gefahren";
+                    GUI.Label(TextRect(w, h, 0.10f, 0.11f), "AUS", title);
+                    GUI.Label(TextRect(w, h, 0.21f, 0.10f), $"{reason} · {game.Distance:0} m", subtitle);
+                    DrawPicker(w, h, 0.52f);
+                    GUI.Label(TextRect(w, h, 0.78f, 0.10f), Auswahlhinweis(), call);
                     break;
             }
         }
 
-        void DrawCentered(string headline, string line, string prompt)
+        /// <summary>Beide Charaktere nebeneinander, der gewählte hervorgehoben.</summary>
+        void DrawPicker(float w, float h, float centerY)
         {
-            float w = Screen.width;
-            float h = Screen.height;
+            var characters = game.Characters;
+            if (characters == null || characters.Count == 0) return;
 
-            float margin = w * 0.06f;
-            GUI.Label(new Rect(margin, h * 0.30f, w - margin * 2f, h * 0.18f), headline, title);
-            GUI.Label(new Rect(margin, h * 0.50f, w - margin * 2f, h * 0.12f), line, subtitle);
-            GUI.Label(new Rect(margin, h * 0.64f, w - margin * 2f, h * 0.10f), prompt, call);
+            float box = Mathf.Min(w * 0.36f, h * 0.30f);
+            float gap = box * 0.18f;
+            float totalWidth = characters.Count * box + (characters.Count - 1) * gap;
+            float x = (w - totalWidth) * 0.5f;
+            float y = h * centerY - box * 0.5f;
+            float border = Mathf.Max(2f, box * 0.02f);
+
+            for (int i = 0; i < characters.Count; i++)
+            {
+                CharacterDefinition character = characters[i];
+                var frame = new Rect(x + i * (box + gap), y, box, box);
+                bool selected = i == game.SelectedIndex;
+
+                Color previous = GUI.color;
+                if (selected)
+                {
+                    DrawRect(frame, new Color(character.color.r, character.color.g, character.color.b, 0.12f));
+                    DrawFrame(frame, character.color, border);
+                }
+                else
+                {
+                    // Nicht gewählte Figur bewusst zurücknehmen statt ausgrauen –
+                    // die Neonfarbe bleibt so als Vorschau lesbar.
+                    GUI.color = new Color(1f, 1f, 1f, 0.45f);
+                }
+
+                if (character.portrait != null)
+                {
+                    float pad = box * 0.06f;
+                    var inner = new Rect(frame.x + pad, frame.y + pad, frame.width - pad * 2f, frame.height - pad * 2f);
+                    GUI.DrawTexture(inner, character.portrait, ScaleMode.ScaleToFit);
+                }
+                else
+                {
+                    DrawRect(frame, character.color);
+                }
+
+                GUI.color = previous;
+
+                characterName.normal.textColor = selected ? character.color : Muted;
+                GUI.Label(new Rect(frame.x, frame.yMax + box * 0.04f, frame.width, box * 0.22f),
+                    character.displayName, characterName);
+            }
         }
 
         void DrawZoneHints()
@@ -76,11 +132,40 @@ namespace SnakeGiuJu
             GUI.Label(new Rect(w * 0.5f, h * 0.90f, w * 0.5f, h * 0.08f), "rechts  >>", zoneRight);
         }
 
+        static Rect TextRect(float w, float h, float top, float height)
+        {
+            float margin = w * 0.06f;
+            return new Rect(margin, h * top, w - margin * 2f, h * height);
+        }
+
+        static void DrawRect(Rect rect, Color color)
+        {
+            Color previous = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = previous;
+        }
+
+        static void DrawFrame(Rect rect, Color color, float thickness)
+        {
+            DrawRect(new Rect(rect.x, rect.y, rect.width, thickness), color);
+            DrawRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
+            DrawRect(new Rect(rect.x, rect.y, thickness, rect.height), color);
+            DrawRect(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
+        }
+
         static string Steuerhinweis()
         {
             return SteeringInput.HasTouchscreen
-                ? "Linke oder rechte Bildschirmhälfte gedrückt halten"
-                : "Pfeiltaste links oder rechts gedrückt halten";
+                ? "Im Spiel: linke oder rechte Bildschirmhälfte gedrückt halten"
+                : "Im Spiel: Pfeiltaste links oder rechts gedrückt halten";
+        }
+
+        static string Auswahlhinweis()
+        {
+            return SteeringInput.HasTouchscreen
+                ? "Auf die linke oder rechte Bildschirmhälfte tippen und loslegen"
+                : "Mit den Pfeiltasten wählen, Leertaste startet";
         }
 
         void BuildStyles()
@@ -99,14 +184,13 @@ namespace SnakeGiuJu
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.UpperLeft
             };
-            score.normal.textColor = Accent;
 
             best = new GUIStyle(score) { alignment = TextAnchor.UpperRight };
             best.normal.textColor = Muted;
 
             title = new GUIStyle(GUI.skin.label)
             {
-                fontSize = Mathf.RoundToInt(baseSize * 2.6f),
+                fontSize = Mathf.RoundToInt(baseSize * 2.2f),
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter
             };
@@ -121,7 +205,13 @@ namespace SnakeGiuJu
             subtitle.normal.textColor = Muted;
 
             call = new GUIStyle(subtitle);
-            call.normal.textColor = Accent;
+
+            characterName = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 1.2f),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.UpperCenter
+            };
 
             zoneLeft = new GUIStyle(GUI.skin.label)
             {

@@ -15,6 +15,16 @@ Gebaut für WebGL, spielbar im Browser am Rechner und auf dem Handy.
 | Touch | linke Bildschirmhälfte halten | rechte Bildschirmhälfte halten | tippen |
 | Maus | links klicken und halten | rechts klicken und halten | klicken |
 
+## Charakterauswahl
+
+Vor jeder Runde stehen zwei Figuren zur Wahl: **Giu** in Neonblau links und **Ju** in
+Neonpink rechts. Die Farbe der Figur färbt die Linie im Spiel und den Akzent im HUD.
+
+Gewählt wird mit derselben Geste wie gelenkt: links bzw. rechts. Auf dem Touchgerät wählt
+ein Tipp auf die jeweilige Bildschirmhälfte die Figur und startet die Runde in einem Zug;
+auf der Tastatur wählen die Pfeiltasten und die Leertaste startet. Der Auswahlscreen
+erscheint auch nach dem Aus, sodass sich die Figur zwischen zwei Runden wechseln lässt.
+
 ## Aufbau
 
 ```
@@ -26,11 +36,14 @@ Assets/
     ArenaGrid.cs           Belegungsraster: Linien einstempeln, Kreis-Abfrage
     TrailPainter.cs        Linie als LineRenderer-Abschnitte à 128 Punkte
     SteeringInput.cs       Tastatur / Touch / Maus über das Input System
-    Hud.cs                 Texte über IMGUI (braucht keine Fonts oder Prefabs)
+    CharacterDefinition.cs Name, Neonfarbe und Bild einer wählbaren Figur
+    Hud.cs                 Texte und Auswahlscreen über IMGUI (braucht keine Fonts)
     MeshShapes.cs          Kreisscheibe für den Kopf
+  Art/Characters/*.png     Charakterbilder für den Auswahlscreen
   Shaders/CurveLine.shader Unlit mit Vertexfarbe, URP-tauglich
   Editor/WebGLBuilder.cs   Buildeinstellungen + Build für Menü und CI
   WebGLTemplates/SnakeGiuJu/index.html   Vollbild-Canvas, mobiltauglich
+Art/generate_characters.py Quelle der Charakterbilder (SVG + Rasterung)
 .github/workflows/deploy-pages.yml       Build und Veröffentlichung
 ```
 
@@ -53,6 +66,17 @@ Alle Stellschrauben hängen am `Game`-Objekt in `Assets/Scenes/Game.unity`:
 
 Die Winkelgeschwindigkeit ergibt sich aus `moveSpeed / minTurnRadius` – wer schneller
 fährt, fährt automatisch weitere Kurven.
+
+Die Liste `characters` am selben Objekt hält Name, Farbe und Bild der wählbaren Figuren.
+Sie ist nicht auf zwei begrenzt, allerdings wählt die Links/Rechts-Geste nur die erste
+und die letzte – für mehr als zwei Figuren bräuchte die Auswahl eine andere Bedienung.
+
+Die Bilder sind Platzhalter und werden aus `Art/generate_characters.py` erzeugt. Palette
+oder Formen dort ändern und das Skript erneut laufen lassen:
+
+```bash
+python3 Art/generate_characters.py
+```
 
 ## Lokal bauen
 

@@ -45,7 +45,7 @@ Alle Stellschrauben hängen am `Game`-Objekt in `Assets/Scenes/Game.unity`:
 
 | Feld | Standard | Wirkung |
 | --- | --- | --- |
-| `moveSpeed` | 9 | Tempo in Weltmetern pro Sekunde |
+| `moveSpeed` | 7.2 | Tempo in Weltmetern pro Sekunde |
 | `minTurnRadius` | 1.6 | kleinster fahrbarer Kurvenradius |
 | `lineWidth` | 0.36 | Strichbreite und zugleich Kollisionsdurchmesser |
 | `arenaHeight` | 20 | Höhe des Spielfelds, die Breite folgt dem Seitenverhältnis |

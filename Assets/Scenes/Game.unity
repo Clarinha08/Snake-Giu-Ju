@@ -293,7 +293,7 @@ MonoBehaviour:
   arenaHeight: 20
   cellSize: 0.05
   lineWidth: 0.36
-  moveSpeed: 9
+  moveSpeed: 7.2
   minTurnRadius: 1.6
 --- !u!4 &1747985266
 Transform:

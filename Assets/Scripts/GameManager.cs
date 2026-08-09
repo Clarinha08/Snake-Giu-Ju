@@ -31,7 +31,7 @@ namespace SnakeGiuJu
 
         [Header("Schlange")]
         [SerializeField] float lineWidth = 0.36f;
-        [SerializeField] float moveSpeed = 9f;
+        [SerializeField] float moveSpeed = 7.2f;
         [SerializeField] float minTurnRadius = 1.6f;
 
         Camera cam;

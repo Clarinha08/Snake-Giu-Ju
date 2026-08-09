@@ -17,6 +17,9 @@ namespace SnakeGiuJu
         GUIStyle subtitle;
         GUIStyle call;
         GUIStyle characterName;
+        GUIStyle switchLabel;
+        GUIStyle switchState;
+        GUIStyle pickup;
         GUIStyle zoneLeft;
         GUIStyle zoneRight;
         int builtForHeight = -1;
@@ -41,9 +44,9 @@ namespace SnakeGiuJu
 
             if (game.State != GameState.CharacterSelect)
             {
-                GUI.Label(bar, $"Länge  {game.Distance:0} m", score);
+                GUI.Label(bar, $"Punkte  {game.Score:0}", score);
             }
-            GUI.Label(bar, $"Rekord  {game.BestDistance:0} m", best);
+            GUI.Label(bar, $"Rekord  {game.BestScore:0}", best);
 
             switch (game.State)
             {
@@ -51,10 +54,13 @@ namespace SnakeGiuJu
                     GUI.Label(TextRect(w, h, 0.10f, 0.11f), "SNAKE GIU JU", title);
                     GUI.Label(TextRect(w, h, 0.21f, 0.10f), Steuerhinweis(), subtitle);
                     DrawPicker(w, h, 0.52f);
-                    GUI.Label(TextRect(w, h, 0.78f, 0.10f), Auswahlhinweis(), call);
+                    GUI.Label(TextRect(w, h, 0.76f, 0.09f), Auswahlhinweis(), call);
+                    DrawPowerUpSwitch(w, h, accent);
                     break;
 
                 case GameState.Playing:
+                    DrawBoost(w, h);
+                    DrawPickup(w, h);
                     DrawZoneHints();
                     break;
 
@@ -63,9 +69,10 @@ namespace SnakeGiuJu
                         ? "Gegen den Rand gefahren"
                         : "In eine Kurve gefahren";
                     GUI.Label(TextRect(w, h, 0.10f, 0.11f), "AUS", title);
-                    GUI.Label(TextRect(w, h, 0.21f, 0.10f), $"{reason} · {game.Distance:0} m", subtitle);
+                    GUI.Label(TextRect(w, h, 0.21f, 0.10f), $"{reason} · {game.Score:0} Punkte", subtitle);
                     DrawPicker(w, h, 0.52f);
-                    GUI.Label(TextRect(w, h, 0.78f, 0.10f), Auswahlhinweis(), call);
+                    GUI.Label(TextRect(w, h, 0.76f, 0.09f), Auswahlhinweis(), call);
+                    DrawPowerUpSwitch(w, h, accent);
                     break;
             }
         }
@@ -119,6 +126,67 @@ namespace SnakeGiuJu
                 GUI.Label(new Rect(frame.x, frame.yMax + box * 0.04f, frame.width, box * 0.22f),
                     character.displayName, characterName);
             }
+        }
+
+        /// <summary>
+        /// Schalter für den Power-up-Modus. Die Fläche kommt aus <see cref="HudLayout"/>,
+        /// weil die Spiellogik dieselbe braucht, um den Tipp nicht als Start zu werten.
+        /// </summary>
+        void DrawPowerUpSwitch(float w, float h, Color accent)
+        {
+            Rect rect = HudLayout.PowerUpSwitch(w, h);
+            bool on = game.PowerUpsEnabled;
+
+            float trackWidth = rect.height * 1.9f;
+            float trackHeight = rect.height * 0.62f;
+            var track = new Rect(rect.xMax - trackWidth, rect.y + (rect.height - trackHeight) * 0.5f,
+                trackWidth, trackHeight);
+
+            float pad = trackHeight * 0.16f;
+            float knob = trackHeight - pad * 2f;
+            var knobRect = new Rect(on ? track.xMax - pad - knob : track.x + pad,
+                track.y + pad, knob, knob);
+
+            DrawRect(track, on
+                ? new Color(accent.r, accent.g, accent.b, 0.35f)
+                : new Color(1f, 1f, 1f, 0.10f));
+            DrawFrame(track, on ? accent : new Color(1f, 1f, 1f, 0.25f), Mathf.Max(1f, rect.height * 0.04f));
+            DrawRect(knobRect, on ? accent : Muted);
+
+            // Wie eine Einstellungszeile: Beschriftung links, Zustand und Schaltbahn rechts.
+            float gap = rect.height * 0.3f;
+            float stateWidth = rect.height * 1.8f;
+            var stateRect = new Rect(track.x - gap - stateWidth, rect.y, stateWidth, rect.height);
+            var labelRect = new Rect(rect.x, rect.y, stateRect.x - rect.x - gap, rect.height);
+
+            switchState.normal.textColor = on ? accent : Muted;
+            GUI.Label(labelRect, SteeringInput.HasTouchscreen ? "Power-ups" : "Power-ups (P)", switchLabel);
+            GUI.Label(stateRect, on ? "AN" : "AUS", switchState);
+        }
+
+        /// <summary>Restlaufzeit des Temposchubs, damit der Punkteschub nachvollziehbar ist.</summary>
+        void DrawBoost(float w, float h)
+        {
+            if (game.BoostRemaining <= 0f) return;
+
+            Color color = PowerUpRules.ColorOf(PowerUpKind.Speed);
+            pickup.normal.textColor = color;
+            GUI.Label(TextRect(w, h, 0.115f, 0.07f),
+                $"SPEED  x{PowerUpRules.SpeedScoreFactor:0.0} Punkte  ·  {game.BoostRemaining:0.0} s", pickup);
+        }
+
+        /// <summary>Kurze Einblendung, was gerade eingesammelt wurde.</summary>
+        void DrawPickup(float w, float h)
+        {
+            const float Duration = 1.2f;
+            float age = Time.time - game.LastPickupAt;
+            if (age < 0f || age > Duration) return;
+
+            Color color = PowerUpRules.ColorOf(game.LastPickup);
+            color.a = 1f - age / Duration;
+            title.normal.textColor = color;
+            GUI.Label(TextRect(w, h, 0.24f, 0.11f), PowerUpRules.LabelOf(game.LastPickup), title);
+            title.normal.textColor = Color.white;
         }
 
         void DrawZoneHints()
@@ -211,6 +279,28 @@ namespace SnakeGiuJu
                 fontSize = Mathf.RoundToInt(baseSize * 1.2f),
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.UpperCenter
+            };
+
+            switchLabel = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 0.9f),
+                alignment = TextAnchor.MiddleLeft,
+                wordWrap = false,
+                clipping = TextClipping.Clip
+            };
+            switchLabel.normal.textColor = Muted;
+
+            switchState = new GUIStyle(switchLabel)
+            {
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleRight
+            };
+
+            pickup = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 0.95f),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft
             };
 
             zoneLeft = new GUIStyle(GUI.skin.label)

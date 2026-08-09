@@ -65,6 +65,42 @@ namespace SnakeGiuJu
             return mouse != null && mouse.leftButton.wasPressedThisFrame;
         }
 
+        /// <summary>
+        /// Position des Tipps oder Klicks aus diesem Frame, in Bildschirmpixeln mit
+        /// Ursprung unten links. Nötig, um Flächen wie den Power-up-Schalter von der
+        /// Start-Geste auszunehmen.
+        /// </summary>
+        public static bool TryGetPressPosition(out Vector2 position)
+        {
+            Touchscreen touchscreen = Touchscreen.current;
+            if (touchscreen != null)
+            {
+                foreach (var touch in touchscreen.touches)
+                {
+                    if (!touch.press.wasPressedThisFrame) continue;
+                    position = touch.position.ReadValue();
+                    return true;
+                }
+            }
+
+            Mouse mouse = Mouse.current;
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            {
+                position = mouse.position.ReadValue();
+                return true;
+            }
+
+            position = default;
+            return false;
+        }
+
+        /// <summary>Tastaturkürzel für den Power-up-Schalter.</summary>
+        public static bool TogglePressed()
+        {
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null && keyboard.pKey.wasPressedThisFrame;
+        }
+
         public static bool HasTouchscreen => Touchscreen.current != null;
 
         static int SideOf(float screenX) => screenX < Screen.width * 0.5f ? -1 : 1;

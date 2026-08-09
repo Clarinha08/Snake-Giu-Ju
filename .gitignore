@@ -34,3 +34,6 @@ crashlytics-build.properties
 
 # macOS
 .DS_Store
+
+# Lokale, maschinenspezifische Claude-Code-Einstellungen
+.claude/settings.local.json

@@ -20,10 +20,9 @@ namespace SnakeGiuJu
     {
         readonly ArenaGrid grid;
         readonly TrailPainter trail;
-        readonly float radius;
+        readonly float baseRadius;
         readonly float speed;
         readonly float turnRateDeg;
-        readonly float paintDelay;
 
         // Das jüngste Stück hinter dem Kopf wird bewusst noch nicht ins Raster
         // gestempelt, sonst würde der Kopf sofort mit seinem eigenen Körper kollidieren.
@@ -34,8 +33,21 @@ namespace SnakeGiuJu
         public Vector2 Position { get; private set; }
         public float HeadingDeg { get; private set; }
         public float Distance { get; private set; }
+        public float Score { get; private set; }
         public bool Alive { get; private set; }
         public DeathCause Cause { get; private set; }
+
+        /// <summary>Halbe Linienbreite. Power-ups verändern sie während der Runde.</summary>
+        public float Radius { get; set; }
+
+        /// <summary>Tempofaktor. Die Winkelgeschwindigkeit zieht mit, der Mindestradius bleibt dadurch gleich.</summary>
+        public float SpeedMultiplier { get; set; } = 1f;
+
+        public float ScoreMultiplier { get; set; } = 1f;
+
+        // Das jüngste Stück hinter dem Kopf bleibt ungestempelt. Der Abstand wächst
+        // mit der Dicke mit, sonst würde eine fett gewordene Linie den eigenen Kopf treffen.
+        float PaintDelay => Radius * 4f;
 
         public Vector2 Direction => new Vector2(
             Mathf.Cos(HeadingDeg * Mathf.Deg2Rad),
@@ -45,12 +57,10 @@ namespace SnakeGiuJu
         {
             this.grid = grid;
             this.trail = trail;
-            this.radius = radius;
+            baseRadius = radius;
             this.speed = speed;
+            Radius = radius;
             turnRateDeg = speed / Mathf.Max(minTurnRadius, 0.01f) * Mathf.Rad2Deg;
-            // Reicht, um den eigenen Kopf freizuhalten, ist aber weit kürzer als ein
-            // enger Vollkreis (2*pi*Mindestradius) – zu eng gefahrene Schleifen bleiben tödlich.
-            paintDelay = radius * 4f;
         }
 
         public void Spawn(Vector2 position, float headingDeg)
@@ -58,6 +68,10 @@ namespace SnakeGiuJu
             Position = position;
             HeadingDeg = headingDeg;
             Distance = 0f;
+            Score = 0f;
+            Radius = baseRadius;
+            SpeedMultiplier = 1f;
+            ScoreMultiplier = 1f;
             Alive = true;
             Cause = DeathCause.None;
 
@@ -72,26 +86,30 @@ namespace SnakeGiuJu
         {
             if (!Alive) return;
 
-            HeadingDeg -= steering * turnRateDeg * dt;
-            Vector2 next = Position + Direction * (speed * dt);
+            // Tempo und Winkelgeschwindigkeit werden gemeinsam skaliert, damit der
+            // Mindestkurvenradius auch im Speed-Rausch derselbe bleibt.
+            float step = speed * SpeedMultiplier * dt;
+            HeadingDeg -= steering * turnRateDeg * SpeedMultiplier * dt;
+            Vector2 next = Position + Direction * step;
 
             Rect bounds = grid.Bounds;
-            if (next.x < bounds.xMin + radius || next.x > bounds.xMax - radius ||
-                next.y < bounds.yMin + radius || next.y > bounds.yMax - radius)
+            if (next.x < bounds.xMin + Radius || next.x > bounds.xMax - Radius ||
+                next.y < bounds.yMin + Radius || next.y > bounds.yMax - Radius)
             {
                 Alive = false;
                 Cause = DeathCause.Wall;
                 return;
             }
 
-            if (grid.OverlapsDisc(next, radius))
+            if (grid.OverlapsDisc(next, Radius))
             {
                 Alive = false;
                 Cause = DeathCause.Trail;
                 return;
             }
 
-            Distance += speed * dt;
+            Distance += step;
+            Score += step * ScoreMultiplier;
             pendingLength += Vector2.Distance(Position, next);
             pending.Enqueue(next);
             Position = next;
@@ -106,10 +124,10 @@ namespace SnakeGiuJu
             {
                 Vector2 next = pending.Peek();
                 float segment = Vector2.Distance(lastStamped, next);
-                if (pendingLength - segment < paintDelay) break;
+                if (pendingLength - segment < PaintDelay) break;
 
                 pending.Dequeue();
-                grid.StampCapsule(lastStamped, next, radius);
+                grid.StampCapsule(lastStamped, next, Radius);
                 lastStamped = next;
                 pendingLength -= segment;
             }

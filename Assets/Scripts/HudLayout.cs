@@ -1,0 +1,26 @@
+using UnityEngine;
+
+namespace SnakeGiuJu
+{
+    /// <summary>
+    /// Flächen, die das HUD zeichnet und die Spiellogik treffen muss. Beide Seiten
+    /// rechnen hier, damit der Schalter nicht woanders sitzt als er reagiert.
+    /// </summary>
+    public static class HudLayout
+    {
+        /// <summary>Schalter für den Power-up-Modus, in GUI-Koordinaten (Ursprung oben links).</summary>
+        public static Rect PowerUpSwitch(float screenWidth, float screenHeight)
+        {
+            float height = Mathf.Min(screenWidth, screenHeight * 0.75f) * 0.075f;
+            // Breit genug für Beschriftung, Zustandstext und Schaltbahn nebeneinander.
+            float width = Mathf.Min(height * 7.6f, screenWidth * 0.9f);
+            return new Rect((screenWidth - width) * 0.5f, screenHeight * 0.875f, width, height);
+        }
+
+        /// <summary>Rechnet eine Zeigerposition (Ursprung unten links) in GUI-Koordinaten um.</summary>
+        public static Vector2 ToGuiSpace(Vector2 screenPosition)
+        {
+            return new Vector2(screenPosition.x, Screen.height - screenPosition.y);
+        }
+    }
+}

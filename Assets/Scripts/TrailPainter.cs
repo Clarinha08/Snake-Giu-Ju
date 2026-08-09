@@ -14,8 +14,8 @@ namespace SnakeGiuJu
 
         readonly Transform root;
         readonly Material material;
-        readonly float width;
         readonly float pointSpacing;
+        float width;
         readonly List<Vector3> points = new List<Vector3>(PointsPerChunk);
         readonly List<GameObject> chunks = new List<GameObject>();
 
@@ -64,6 +64,23 @@ namespace SnakeGiuJu
         public void SetHead(Vector2 position)
         {
             active.SetPosition(points.Count, position);
+        }
+
+        /// <summary>
+        /// Ändert die Strichbreite ab hier. Der laufende Abschnitt wird dafür
+        /// eingefroren – ein LineRenderer hat nur eine Breite für seine ganze Linie,
+        /// die schon gezogene Strecke soll ihre aber behalten.
+        /// </summary>
+        public void SetWidth(float value)
+        {
+            if (Mathf.Approximately(value, width)) return;
+
+            width = value;
+            // Vor der ersten Runde gibt es noch keinen Abschnitt, der eingefroren werden müsste.
+            if (active == null) return;
+
+            active.positionCount = points.Count;
+            StartChunk(points[points.Count - 1]);
         }
 
         void StartChunk(Vector2 start)

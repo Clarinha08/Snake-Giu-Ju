@@ -17,7 +17,10 @@ namespace SnakeGiuJu
     public sealed class GameManager : MonoBehaviour
     {
         const float SimulationStep = 1f / 120f;
-        const string BestDistanceKey = "SnakeGiuJu.BestDistance";
+        // Der Rekord zaehlt seit dem Power-up-Modus Punkte statt Meter, deshalb ein
+        // neuer Schluessel - alte Meter-Rekorde waeren als Punkte gelesen irrefuehrend.
+        const string BestScoreKey = "SnakeGiuJu.BestScore";
+        const string PowerUpsKey = "SnakeGiuJu.PowerUps";
 
         [Header("Rendering")]
         [SerializeField] Shader lineShader;
@@ -38,6 +41,7 @@ namespace SnakeGiuJu
         [SerializeField] float minTurnRadius = 1.6f;
 
         Camera cam;
+        PowerUpField powerUps;
         Material lineMaterial;
         Material headMaterial;
         LineRenderer border;
@@ -49,11 +53,22 @@ namespace SnakeGiuJu
         float accumulator;
         float stateChangedAt;
         int selectedIndex;
+        float widthFactor = 1f;
+        float speedBoostUntil;
 
         public GameState State { get; private set; } = GameState.CharacterSelect;
-        public float Distance => player?.Distance ?? 0f;
-        public float BestDistance { get; private set; }
+        public float Score => player?.Score ?? 0f;
+        public float BestScore { get; private set; }
         public DeathCause Cause => player?.Cause ?? DeathCause.None;
+
+        public bool PowerUpsEnabled { get; private set; }
+
+        /// <summary>Restlaufzeit des Temposchubs, 0 wenn keiner aktiv ist.</summary>
+        public float BoostRemaining => Mathf.Max(0f, speedBoostUntil - Time.time);
+
+        /// <summary>Zuletzt eingesammeltes Power-up und wann - fuer die Einblendung im HUD.</summary>
+        public PowerUpKind LastPickup { get; private set; }
+        public float LastPickupAt { get; private set; } = -99f;
 
         public IReadOnlyList<CharacterDefinition> Characters => characters;
         public int SelectedIndex => selectedIndex;
@@ -62,7 +77,8 @@ namespace SnakeGiuJu
         void Awake()
         {
             Application.targetFrameRate = 60;
-            BestDistance = PlayerPrefs.GetFloat(BestDistanceKey, 0f);
+            BestScore = PlayerPrefs.GetFloat(BestScoreKey, 0f);
+            PowerUpsEnabled = PlayerPrefs.GetInt(PowerUpsKey, 0) != 0;
             EnsureCharacters();
 
             cam = Camera.main;
@@ -80,6 +96,7 @@ namespace SnakeGiuJu
             CreateHead();
 
             trail = new TrailPainter(transform, lineMaterial, Selected.color, lineWidth, lineWidth * 0.5f);
+            powerUps = new PowerUpField(transform, lineShader);
             gameObject.AddComponent<Hud>().Bind(this);
 
             // Noch keine Runde aufsetzen: vor der ersten Auswahl soll weder Kopf
@@ -120,18 +137,87 @@ namespace SnakeGiuJu
         /// </summary>
         void UpdatePicker(float guardSeconds)
         {
+            bool ready = Time.time - stateChangedAt >= guardSeconds;
+
+            // Der Schalter liegt in der Startflaeche, deshalb muss er zuerst geprueft
+            // werden: ein Tipp auf ihn soll umschalten statt die Runde zu starten.
+            if (ready && (SteeringInput.TogglePressed() || PressLandedOnSwitch()))
+            {
+                TogglePowerUps();
+                return;
+            }
+
             int steering = SteeringInput.ReadSteering();
             if (steering != 0) selectedIndex = steering < 0 ? 0 : characters.Length - 1;
 
-            if (Time.time - stateChangedAt < guardSeconds) return;
-            if (!SteeringInput.ConfirmPressed()) return;
+            if (!ready || !SteeringInput.ConfirmPressed()) return;
 
             ResetRound();
             SetState(GameState.Playing);
         }
 
+        static bool PressLandedOnSwitch()
+        {
+            if (!SteeringInput.TryGetPressPosition(out Vector2 press)) return false;
+            return HudLayout.PowerUpSwitch(Screen.width, Screen.height)
+                .Contains(HudLayout.ToGuiSpace(press));
+        }
+
+        void TogglePowerUps()
+        {
+            PowerUpsEnabled = !PowerUpsEnabled;
+            PlayerPrefs.SetInt(PowerUpsKey, PowerUpsEnabled ? 1 : 0);
+            PlayerPrefs.Save();
+            if (!PowerUpsEnabled) powerUps.Clear();
+        }
+
+        void Collect(PowerUpKind kind)
+        {
+            LastPickup = kind;
+            LastPickupAt = Time.time;
+
+            switch (kind)
+            {
+                case PowerUpKind.Fett:
+                    ScaleWidth(PowerUpRules.FettFactor);
+                    break;
+                case PowerUpKind.Duenn:
+                    ScaleWidth(PowerUpRules.DuennFactor);
+                    break;
+                default:
+                    // Ein zweiter Schub verlaengert, statt sich zu stapeln.
+                    speedBoostUntil = Time.time + PowerUpRules.SpeedDuration;
+                    break;
+            }
+        }
+
+        void ScaleWidth(float factor)
+        {
+            widthFactor = Mathf.Clamp(widthFactor * factor,
+                PowerUpRules.MinWidthFactor, PowerUpRules.MaxWidthFactor);
+            ApplyWidth();
+        }
+
+        void ApplyWidth()
+        {
+            float width = lineWidth * widthFactor;
+            player.Radius = width * 0.5f;
+            trail.SetWidth(width);
+            head.localScale = Vector3.one * (width * 1.3f);
+        }
+
         void Simulate()
         {
+            if (PowerUpsEnabled)
+            {
+                powerUps.Tick(Time.time, player.Position, player.Radius);
+                for (int i = 0; i < powerUps.Collected.Count; i++) Collect(powerUps.Collected[i]);
+            }
+
+            bool boosting = Time.time < speedBoostUntil;
+            player.SpeedMultiplier = boosting ? PowerUpRules.SpeedFactor : 1f;
+            player.ScoreMultiplier = boosting ? PowerUpRules.SpeedScoreFactor : 1f;
+
             int steering = SteeringInput.ReadSteering();
             accumulator += Mathf.Min(Time.deltaTime, 0.25f);
 
@@ -147,10 +233,10 @@ namespace SnakeGiuJu
             if (player.Alive) return;
 
             accumulator = 0f;
-            if (player.Distance > BestDistance)
+            if (player.Score > BestScore)
             {
-                BestDistance = player.Distance;
-                PlayerPrefs.SetFloat(BestDistanceKey, BestDistance);
+                BestScore = player.Score;
+                PlayerPrefs.SetFloat(BestScoreKey, BestScore);
                 PlayerPrefs.Save();
             }
             SetState(GameState.GameOver);
@@ -170,10 +256,19 @@ namespace SnakeGiuJu
             BuildArena();
             grid.Clear();
             accumulator = 0f;
+            speedBoostUntil = 0f;
+            LastPickupAt = -99f;
+
+            // Breite vor dem Spawn zuruecksetzen: Spawn legt den ersten Linienabschnitt
+            // an und der uebernimmt die dann gueltige Breite.
+            widthFactor = 1f;
             trail.Color = Selected.color;
+            ApplyWidth();
+
             player.Spawn(Vector2.zero, Random.Range(0f, 360f));
             trail.SetHead(player.Position);
             head.position = new Vector3(player.Position.x, player.Position.y, -0.2f);
+            powerUps.Restart(grid, Time.time);
         }
 
         /// <summary>

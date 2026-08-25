@@ -18,8 +18,8 @@ Gebaut für WebGL, spielbar im Browser am Rechner und auf dem Handy.
 
 ## Charakterauswahl
 
-Vor jeder Runde stehen zwei Figuren zur Wahl: **Giu** in Neonblau links und **Ju** in
-Neonpink rechts. Die Farbe der Figur färbt die Linie im Spiel und den Akzent im HUD.
+Vor jeder Runde stehen zwei Figuren zur Wahl: **Giu** in Neonpink links und **Ju** in
+Neonblau rechts. Die Farbe der Figur färbt die Linie im Spiel und den Akzent im HUD.
 
 Gewählt wird mit derselben Geste wie gelenkt: links bzw. rechts. Auf dem Touchgerät wählt
 ein Tipp auf die jeweilige Bildschirmhälfte die Figur und startet die Runde in einem Zug;
@@ -101,12 +101,23 @@ Die Liste `characters` am selben Objekt hält Name, Farbe und Bild der wählbare
 Sie ist nicht auf zwei begrenzt, allerdings wählt die Links/Rechts-Geste nur die erste
 und die letzte – für mehr als zwei Figuren bräuchte die Auswahl eine andere Bedienung.
 
-Die Bilder sind Platzhalter und werden aus `Art/generate_characters.py` erzeugt. Palette
-oder Formen dort ändern und das Skript erneut laufen lassen:
+Die Bilder unter `Assets/Art/Characters/` sind echte Fotos von Giu und Ju, per Hand als
+Kreis mit transparenten Ecken zugeschnitten – dafür sorgt
+`Art/prepare_avatar_photos.py`:
 
 ```bash
-python3 Art/generate_characters.py
+python3 Art/prepare_avatar_photos.py eingabe.png Assets/Art/Characters/giu.png
 ```
+
+Das Skript findet den Bildinhalt selbst (funktioniert mit Fotos auf annähernd weißem
+Grund, egal wie viel Rand drumherum ist), schneidet quadratisch zu, skaliert auf 512×512
+und schneidet kreisförmig mit weicher Kante frei.
+
+`Art/generate_characters.py` erzeugt stattdessen gezeichnete Platzhalterfiguren im
+Comicstil – Quelle der ursprünglichen Illustrationen, bevor echte Fotos an ihre Stelle
+traten. Läuft es erneut, überschreibt es `giu.png`/`ju.png` wieder mit der Illustration;
+zum Anpassen der echten Fotos also `prepare_avatar_photos.py` verwenden, nicht dieses
+Skript.
 
 ## Lokal bauen
 

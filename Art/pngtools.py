@@ -4,7 +4,11 @@ import zlib
 
 
 def read_rgba(path):
-    """Liest ein 8-bit-RGBA-PNG und gibt (breite, hoehe, bytearray) zurueck."""
+    """Liest ein 8-bit-PNG (RGB oder RGBA) und gibt (breite, hoehe, RGBA-bytearray) zurueck.
+
+    RGB-Quellen (Farbtyp 2, z. B. von sips aus WebP konvertiert) werden mit
+    Alpha 255 aufgefuellt, damit der Rest der Pipeline immer mit RGBA arbeitet.
+    """
     data = open(path, "rb").read()
     if data[:8] != b"\x89PNG\r\n\x1a\n":
         raise ValueError(f"{path}: kein PNG")
@@ -17,15 +21,16 @@ def read_rgba(path):
         pos += 12 + length
         if chunk == b"IHDR":
             width, height, depth, color_type, _, _, interlace = struct.unpack(">IIBBBBB", body)
-            if depth != 8 or color_type != 6 or interlace != 0:
-                raise ValueError(f"{path}: erwartet 8-bit RGBA ohne Interlace")
+            if depth != 8 or color_type not in (2, 6) or interlace != 0:
+                raise ValueError(f"{path}: erwartet 8-bit RGB oder RGBA ohne Interlace")
         elif chunk == b"IDAT":
             idat += body
         elif chunk == b"IEND":
             break
 
+    channels = 3 if color_type == 2 else 4
     raw = zlib.decompress(bytes(idat))
-    stride = width * 4
+    stride = width * channels
     out = bytearray(stride * height)
     previous = bytearray(stride)
     pos = 0
@@ -37,20 +42,20 @@ def read_rgba(path):
         pos += stride
 
         if filter_type == 1:
-            for x in range(4, stride):
-                line[x] = (line[x] + line[x - 4]) & 255
+            for x in range(channels, stride):
+                line[x] = (line[x] + line[x - channels]) & 255
         elif filter_type == 2:
             for x in range(stride):
                 line[x] = (line[x] + previous[x]) & 255
         elif filter_type == 3:
             for x in range(stride):
-                left = line[x - 4] if x >= 4 else 0
+                left = line[x - channels] if x >= channels else 0
                 line[x] = (line[x] + ((left + previous[x]) >> 1)) & 255
         elif filter_type == 4:
             for x in range(stride):
-                a = line[x - 4] if x >= 4 else 0
+                a = line[x - channels] if x >= channels else 0
                 b = previous[x]
-                c = previous[x - 4] if x >= 4 else 0
+                c = previous[x - channels] if x >= channels else 0
                 p = a + b - c
                 pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
                 predictor = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
@@ -61,7 +66,14 @@ def read_rgba(path):
         out[y * stride:(y + 1) * stride] = line
         previous = line
 
-    return width, height, out
+    if channels == 4:
+        return width, height, out
+
+    rgba = bytearray(width * height * 4)
+    for i in range(width * height):
+        rgba[i * 4:i * 4 + 3] = out[i * 3:i * 3 + 3]
+        rgba[i * 4 + 3] = 255
+    return width, height, rgba
 
 
 def write_rgba(path, width, height, pixels):

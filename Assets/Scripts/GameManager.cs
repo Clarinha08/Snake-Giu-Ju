@@ -282,8 +282,8 @@ namespace SnakeGiuJu
                 Debug.LogWarning("Keine Charaktere in der Szene gesetzt, benutze Standardfarben ohne Bilder.");
                 characters = new[]
                 {
-                    new CharacterDefinition { displayName = "Giu", color = new Color(0.133f, 0.890f, 1f, 1f) },
-                    new CharacterDefinition { displayName = "Ju", color = new Color(1f, 0.247f, 0.816f, 1f) }
+                    new CharacterDefinition { displayName = "Giu", color = new Color(1f, 0.247f, 0.816f, 1f) },
+                    new CharacterDefinition { displayName = "Ju", color = new Color(0.133f, 0.890f, 1f, 1f) }
                 };
             }
 

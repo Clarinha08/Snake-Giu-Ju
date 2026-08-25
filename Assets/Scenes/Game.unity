@@ -286,9 +286,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   lineShader: {fileID: 4800000, guid: 63b28db863ac4d0388e655a0fd92f284, type: 3}
+  headShader: {fileID: 4800000, guid: 62682dcf119a4d5b9cc6c85b1f4c1d32, type: 3}
   backgroundColor: {r: 0.043, g: 0.055, b: 0.078, a: 1}
   borderColor: {r: 0.298, g: 0.361, b: 0.482, a: 1}
-  headColor: {r: 1, g: 1, b: 1, a: 1}
   characters:
   - displayName: Giu
     color: {r: 1, g: 0.247, b: 0.816, a: 1}

@@ -71,5 +71,36 @@ namespace SnakeGiuJu
             mesh.RecalculateBounds();
             return mesh;
         }
+
+        /// <summary>
+        /// Quadrat in der XY-Ebene mit Kantenlänge 1, damit die Skalierung der
+        /// Bildbreite entspricht. Für texturierte Sprites wie die Kopf-Porträts -
+        /// deren Kreisform kommt vom Alphakanal des Bildes, nicht von der Mesh-Form.
+        /// </summary>
+        public static Mesh CreateQuad()
+        {
+            var vertices = new[]
+            {
+                new Vector3(-0.5f, -0.5f, 0f),
+                new Vector3(0.5f, -0.5f, 0f),
+                new Vector3(0.5f, 0.5f, 0f),
+                new Vector3(-0.5f, 0.5f, 0f)
+            };
+            var uv = new[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(1f, 0f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, 1f)
+            };
+            var triangles = new[] { 0, 1, 2, 0, 2, 3 };
+
+            var mesh = new Mesh { name = "Quad" };
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uv);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
     }
 }

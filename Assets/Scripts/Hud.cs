@@ -15,13 +15,23 @@ namespace SnakeGiuJu
         GUIStyle best;
         GUIStyle title;
         GUIStyle subtitle;
+        GUIStyle pickHeading;
         GUIStyle call;
         GUIStyle characterName;
         GUIStyle switchLabel;
         GUIStyle switchState;
+        GUIStyle startLabel;
         GUIStyle pickup;
         GUIStyle zoneLeft;
         GUIStyle zoneRight;
+
+        // Abgerundete Formen für Schalter und Start-Button, prozedural erzeugt statt
+        // als Bilddatei mitgeliefert - siehe UITextures. Bei jeder Größenänderung neu
+        // gebaut, zusammen mit den GUIStyles unten.
+        Texture2D switchTrackTex;
+        Texture2D switchKnobTex;
+        Texture2D startButtonTex;
+
         int builtForHeight = -1;
         int builtForWidth = -1;
 
@@ -44,18 +54,16 @@ namespace SnakeGiuJu
 
             if (game.State != GameState.CharacterSelect)
             {
-                GUI.Label(bar, $"Punkte  {game.Score:0}", score);
+                GUI.Label(bar, $"Score  {game.Score:0}", score);
             }
-            GUI.Label(bar, $"Rekord  {game.BestScore:0}", best);
+            GUI.Label(bar, $"Best  {game.BestScore:0}", best);
 
             switch (game.State)
             {
                 case GameState.CharacterSelect:
-                    GUI.Label(TextRect(w, h, 0.10f, 0.11f), "SNAKE GIU JU", title);
-                    GUI.Label(TextRect(w, h, 0.21f, 0.10f), Steuerhinweis(), subtitle);
-                    DrawPicker(w, h, 0.52f);
-                    GUI.Label(TextRect(w, h, 0.76f, 0.09f), Auswahlhinweis(), call);
-                    DrawPowerUpSwitch(w, h, accent);
+                    GUI.Label(TextRect(w, h, 0.05f, 0.10f), "SNAKE GIU JU", title);
+                    GUI.Label(TextRect(w, h, 0.17f, 0.07f), "Pick a player", pickHeading);
+                    DrawPickAndPlay(w, h, accent);
                     break;
 
                 case GameState.Playing:
@@ -65,16 +73,25 @@ namespace SnakeGiuJu
                     break;
 
                 case GameState.GameOver:
-                    string reason = game.Cause == DeathCause.Wall
-                        ? "Gegen den Rand gefahren"
-                        : "In eine Kurve gefahren";
-                    GUI.Label(TextRect(w, h, 0.10f, 0.11f), "AUS", title);
-                    GUI.Label(TextRect(w, h, 0.21f, 0.10f), $"{reason} · {game.Score:0} Punkte", subtitle);
-                    DrawPicker(w, h, 0.52f);
-                    GUI.Label(TextRect(w, h, 0.76f, 0.09f), Auswahlhinweis(), call);
-                    DrawPowerUpSwitch(w, h, accent);
+                    string reason = game.Cause == DeathCause.Wall ? "Hit the wall" : "Hit the trail";
+                    GUI.Label(TextRect(w, h, 0.05f, 0.10f), "OUT", title);
+                    GUI.Label(TextRect(w, h, 0.17f, 0.07f), $"{reason} · {game.Score:0} points", subtitle);
+                    DrawPickAndPlay(w, h, accent);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Der gemeinsame untere Teil von Auswahl- und Game-Over-Screen: Avatare,
+        /// Power-up-Schalter, Steuerhinweis und Start-Button - in genau dieser
+        /// Reihenfolge, damit die Steuerung erklärt ist, bevor sie gebraucht wird.
+        /// </summary>
+        void DrawPickAndPlay(float w, float h, Color accent)
+        {
+            DrawPicker(w, h, 0.44f);
+            DrawPowerUpSwitch(w, h, accent);
+            GUI.Label(TextRect(w, h, 0.78f, 0.06f), SteeringHint(), call);
+            DrawStartButton(w, h, accent);
         }
 
         /// <summary>Beide Charaktere nebeneinander, der gewählte hervorgehoben.</summary>
@@ -130,7 +147,7 @@ namespace SnakeGiuJu
 
         /// <summary>
         /// Schalter für den Power-up-Modus. Die Fläche kommt aus <see cref="HudLayout"/>,
-        /// weil die Spiellogik dieselbe braucht, um den Tipp nicht als Start zu werten.
+        /// weil die Spiellogik dieselbe braucht, um den Tipp nicht als Auswahl zu werten.
         /// </summary>
         void DrawPowerUpSwitch(float w, float h, Color accent)
         {
@@ -142,16 +159,17 @@ namespace SnakeGiuJu
             var track = new Rect(rect.xMax - trackWidth, rect.y + (rect.height - trackHeight) * 0.5f,
                 trackWidth, trackHeight);
 
-            float pad = trackHeight * 0.16f;
+            float pad = trackHeight * 0.14f;
             float knob = trackHeight - pad * 2f;
             var knobRect = new Rect(on ? track.xMax - pad - knob : track.x + pad,
                 track.y + pad, knob, knob);
 
-            DrawRect(track, on
-                ? new Color(accent.r, accent.g, accent.b, 0.35f)
-                : new Color(1f, 1f, 1f, 0.10f));
-            DrawFrame(track, on ? accent : new Color(1f, 1f, 1f, 0.25f), Mathf.Max(1f, rect.height * 0.04f));
-            DrawRect(knobRect, on ? accent : Muted);
+            Color previous = GUI.color;
+            GUI.color = on ? new Color(accent.r, accent.g, accent.b, 1f) : new Color(1f, 1f, 1f, 0.16f);
+            GUI.DrawTexture(track, switchTrackTex);
+            GUI.color = on ? Color.white : Muted;
+            GUI.DrawTexture(knobRect, switchKnobTex);
+            GUI.color = previous;
 
             // Wie eine Einstellungszeile: Beschriftung links, Zustand und Schaltbahn rechts.
             float gap = rect.height * 0.3f;
@@ -161,7 +179,24 @@ namespace SnakeGiuJu
 
             switchState.normal.textColor = on ? accent : Muted;
             GUI.Label(labelRect, SteeringInput.HasTouchscreen ? "Power-ups" : "Power-ups (P)", switchLabel);
-            GUI.Label(stateRect, on ? "AN" : "AUS", switchState);
+            GUI.Label(stateRect, on ? "ON" : "OFF", switchState);
+        }
+
+        /// <summary>
+        /// Der eigentliche Rundenstart. Ein eigener Button statt "Tipp irgendwo
+        /// startet" - so lassen sich Charakter und Power-up-Modus in Ruhe wählen,
+        /// ohne aus Versehen schon loszufahren.
+        /// </summary>
+        void DrawStartButton(float w, float h, Color accent)
+        {
+            Rect rect = HudLayout.StartButton(w, h);
+
+            Color previous = GUI.color;
+            GUI.color = accent;
+            GUI.DrawTexture(rect, startButtonTex);
+            GUI.color = previous;
+
+            GUI.Label(rect, "START", startLabel);
         }
 
         /// <summary>Restlaufzeit des Temposchubs, damit der Punkteschub nachvollziehbar ist.</summary>
@@ -172,7 +207,7 @@ namespace SnakeGiuJu
             Color color = PowerUpRules.ColorOf(PowerUpKind.Speed);
             pickup.normal.textColor = color;
             GUI.Label(TextRect(w, h, 0.115f, 0.07f),
-                $"SPEED  x{PowerUpRules.SpeedScoreFactor:0.0} Punkte  ·  {game.BoostRemaining:0.0} s", pickup);
+                $"SPEED  x{PowerUpRules.SpeedScoreFactor:0.0} points  ·  {game.BoostRemaining:0.0}s", pickup);
         }
 
         /// <summary>Kurze Einblendung, was gerade eingesammelt wurde.</summary>
@@ -196,8 +231,15 @@ namespace SnakeGiuJu
             float w = Screen.width;
             float h = Screen.height;
             // Nur ASCII: der eingebaute IMGUI-Font hat keine Pfeil-Glyphen.
-            GUI.Label(new Rect(0f, h * 0.90f, w * 0.5f, h * 0.08f), "<<  links", zoneLeft);
-            GUI.Label(new Rect(w * 0.5f, h * 0.90f, w * 0.5f, h * 0.08f), "rechts  >>", zoneRight);
+            GUI.Label(new Rect(0f, h * 0.90f, w * 0.5f, h * 0.08f), "<<  left", zoneLeft);
+            GUI.Label(new Rect(w * 0.5f, h * 0.90f, w * 0.5f, h * 0.08f), "right  >>", zoneRight);
+        }
+
+        static string SteeringHint()
+        {
+            return SteeringInput.HasTouchscreen
+                ? "Hold the left or right half of the screen to steer"
+                : "Hold the left or right arrow key to steer";
         }
 
         static Rect TextRect(float w, float h, float top, float height)
@@ -220,20 +262,6 @@ namespace SnakeGiuJu
             DrawRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
             DrawRect(new Rect(rect.x, rect.y, thickness, rect.height), color);
             DrawRect(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
-        }
-
-        static string Steuerhinweis()
-        {
-            return SteeringInput.HasTouchscreen
-                ? "Im Spiel: linke oder rechte Bildschirmhälfte gedrückt halten"
-                : "Im Spiel: Pfeiltaste links oder rechts gedrückt halten";
-        }
-
-        static string Auswahlhinweis()
-        {
-            return SteeringInput.HasTouchscreen
-                ? "Auf die linke oder rechte Bildschirmhälfte tippen und loslegen"
-                : "Mit den Pfeiltasten wählen, Leertaste startet";
         }
 
         void BuildStyles()
@@ -272,6 +300,13 @@ namespace SnakeGiuJu
             };
             subtitle.normal.textColor = Muted;
 
+            pickHeading = new GUIStyle(subtitle)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 1.1f),
+                fontStyle = FontStyle.Bold
+            };
+            pickHeading.normal.textColor = Color.white;
+
             call = new GUIStyle(subtitle);
 
             characterName = new GUIStyle(GUI.skin.label)
@@ -296,6 +331,14 @@ namespace SnakeGiuJu
                 alignment = TextAnchor.MiddleRight
             };
 
+            startLabel = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 1.3f),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            startLabel.normal.textColor = Color.white;
+
             pickup = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(baseSize * 0.95f),
@@ -310,6 +353,34 @@ namespace SnakeGiuJu
             };
             zoneLeft.normal.textColor = new Color(1f, 1f, 1f, 0.35f);
             zoneRight = new GUIStyle(zoneLeft);
+
+            BuildRoundedTextures();
+        }
+
+        /// <summary>
+        /// Abgerundete Formen in der tatsächlichen Zielgröße neu erzeugen, damit die
+        /// Ecken bei jedem Seitenverhältnis sauber rund bleiben statt beim Strecken
+        /// einer festen Textur zu verzerren.
+        /// </summary>
+        void BuildRoundedTextures()
+        {
+            float w = Screen.width;
+            float h = Screen.height;
+
+            Rect switchRect = HudLayout.PowerUpSwitch(w, h);
+            float trackHeight = switchRect.height * 0.62f;
+            float trackWidth = switchRect.height * 1.9f;
+            switchTrackTex = UITextures.RoundedRect(
+                Mathf.RoundToInt(trackWidth), Mathf.RoundToInt(trackHeight), trackHeight * 0.5f);
+
+            float pad = trackHeight * 0.14f;
+            float knobSize = trackHeight - pad * 2f;
+            int knobPx = Mathf.Max(2, Mathf.RoundToInt(knobSize));
+            switchKnobTex = UITextures.RoundedRect(knobPx, knobPx, knobPx * 0.5f);
+
+            Rect startRect = HudLayout.StartButton(w, h);
+            startButtonTex = UITextures.RoundedRect(
+                Mathf.RoundToInt(startRect.width), Mathf.RoundToInt(startRect.height), startRect.height * 0.32f);
         }
     }
 }

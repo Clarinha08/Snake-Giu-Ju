@@ -49,8 +49,8 @@ namespace SnakeGiuJu
         {
             switch (kind)
             {
-                case PowerUpKind.Fett: return "FETT";
-                case PowerUpKind.Duenn: return "DÜNN";
+                case PowerUpKind.Fett: return "THICK";
+                case PowerUpKind.Duenn: return "THIN";
                 default: return "SPEED";
             }
         }

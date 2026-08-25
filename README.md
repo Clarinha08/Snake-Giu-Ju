@@ -6,25 +6,33 @@ Gezählt werden Punkte – ein Punkt je gefahrenem Meter, im Power-up-Modus zeit
 Gelenkt wird nur nach links und rechts, und zwar mit begrenzter Winkelgeschwindigkeit –
 dadurch entsteht ein Mindestkurvenradius, scharfe Knicke sind nicht möglich.
 
-Gebaut für WebGL, spielbar im Browser am Rechner und auf dem Handy.
+Gebaut für WebGL, primär fürs Handy optimiert, spielbar aber auch im Desktop-Browser.
+Die Spieloberfläche ist komplett auf Englisch (Zielgruppe: mobile Spieler); diese
+Doku bleibt Deutsch, da sie sich an dich als Entwickler richtet.
 
 ## Steuerung
 
-| Gerät | Links | Rechts | Start / Neustart |
+| Gerät | Links | Rechts | Start |
 | --- | --- | --- | --- |
 | Tastatur | `←` oder `A` | `→` oder `D` | Leertaste oder Enter |
-| Touch | linke Bildschirmhälfte halten | rechte Bildschirmhälfte halten | tippen |
-| Maus | links klicken und halten | rechts klicken und halten | klicken |
+| Touch | linke Bildschirmhälfte halten | rechte Bildschirmhälfte halten | START-Button tippen |
+| Maus | links klicken und halten | rechts klicken und halten | START-Button klicken |
 
 ## Charakterauswahl
 
 Vor jeder Runde stehen zwei Figuren zur Wahl: **Giu** in Neonpink links und **Ju** in
-Neonblau rechts. Die Farbe der Figur färbt die Linie im Spiel und den Akzent im HUD.
+Neonblau rechts. Die Farbe der Figur färbt die Linie im Spiel, den Akzent im HUD und den
+Power-up-Schalter.
 
-Gewählt wird mit derselben Geste wie gelenkt: links bzw. rechts. Auf dem Touchgerät wählt
-ein Tipp auf die jeweilige Bildschirmhälfte die Figur und startet die Runde in einem Zug;
-auf der Tastatur wählen die Pfeiltasten und die Leertaste startet. Der Auswahlscreen
-erscheint auch nach dem Aus, sodass sich Figur und Modus zwischen zwei Runden wechseln lassen.
+Auswählen und Starten sind zwei getrennte Schritte, genau in dieser Reihenfolge auf dem
+Bildschirm: Titel, „Pick a player“, Avatare, Power-up-Schalter, Steuerhinweis, START-Button.
+Gewählt wird mit derselben Geste wie gelenkt (links/rechts antippen bzw. die Pfeiltasten),
+das startet aber nichts von selbst mehr – erst ein Tipp auf **START** (oder Leertaste/Enter)
+beginnt die Runde. Der Grund für die Trennung: ein einzelner Tipp auf den Power-up-Schalter
+darf nicht gleichzeitig auch die Charakterauswahl treffen oder gar die Runde lostreten.
+
+Der Auswahlscreen erscheint auch nach dem Aus, sodass sich Figur und Modus zwischen zwei
+Runden wechseln lassen.
 
 ## Power-up-Modus
 
@@ -38,13 +46,15 @@ wieder – die letzten vier Sekunden blinkt er als Vorwarnung. Eingesammelt wird
 
 | Power-up | Farbe | Wirkung |
 | --- | --- | --- |
-| FETT | Orange, dicker Ring | Linie wird doppelt so breit, gilt bis zum Rundenende |
-| DÜNN | Violett, dünner Ring | Linie wird halb so breit, gilt bis zum Rundenende |
+| THICK | Orange, dicker Ring | Linie wird doppelt so breit, gilt bis zum Rundenende |
+| THIN | Violett, dünner Ring | Linie wird halb so breit, gilt bis zum Rundenende |
 | SPEED | Gelb | 3 Sekunden lang 25 % schneller und 50 % mehr Punkte |
 
-FETT und DÜNN multiplizieren sich, heben sich also gegenseitig auf, und sind auf das
+THICK und THIN multiplizieren sich, heben sich also gegenseitig auf, und sind auf das
 0,35- bis 3-fache der Grundbreite begrenzt – ohne Grenze liesse sich die Linie bis zur
 Unspielbarkeit aufblasen. Ein zweites SPEED verlängert den Schub, statt sich zu stapeln.
+Die Anzeigenamen sind Englisch, intern heißen die Enum-Werte weiterhin `Fett`/`Duenn` in
+[PowerUps.cs](Assets/Scripts/PowerUps.cs) – reines Codeinterna, nicht sichtbar im Spiel.
 
 Beim Temposchub zieht die Winkelgeschwindigkeit mit dem Tempo mit. Der Mindestkurvenradius
 bleibt dadurch derselbe – er ist eine feste Regel des Spiels und soll sich nicht heimlich
@@ -66,11 +76,13 @@ Assets/
     SteeringInput.cs       Tastatur / Touch / Maus über das Input System
     CharacterDefinition.cs Name, Neonfarbe und Bild einer wählbaren Figur
     PowerUps.cs            Regeln der Power-ups, Erscheinen, Ablaufen, Aufsammeln
-    Hud.cs                 Texte, Auswahlscreen und Schalter über IMGUI
+    Hud.cs                 Texte, Auswahlscreen, Schalter und Start-Button über IMGUI
     HudLayout.cs           Flächen, die HUD und Spiellogik gemeinsam brauchen
+    UITextures.cs          Abgerundete Formen zur Laufzeit erzeugt (kein Bild nötig)
     MeshShapes.cs          Kreisscheibe für den Kopf, Ring für die Power-ups
   Art/Characters/*.png     Charakterbilder für den Auswahlscreen
   Shaders/CurveLine.shader Unlit mit Vertexfarbe, URP-tauglich
+  Shaders/HeadPortrait.shader   Unlit mit Textur, für das Charakterfoto am Kopf
   Editor/WebGLBuilder.cs   Buildeinstellungen + Build für Menü und CI
   WebGLTemplates/SnakeGiuJu/index.html   Vollbild-Canvas, mobiltauglich
 Art/generate_characters.py Quelle der Charakterbilder (SVG + Rasterung)

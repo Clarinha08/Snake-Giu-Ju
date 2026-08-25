@@ -24,9 +24,9 @@ namespace SnakeGiuJu
 
         [Header("Rendering")]
         [SerializeField] Shader lineShader;
+        [SerializeField] Shader headShader;
         [SerializeField] Color backgroundColor = new Color(0.043f, 0.055f, 0.078f, 1f);
         [SerializeField] Color borderColor = new Color(0.298f, 0.361f, 0.482f, 1f);
-        [SerializeField] Color headColor = new Color(1f, 1f, 1f, 1f);
 
         [Header("Charaktere")]
         [SerializeField] CharacterDefinition[] characters;
@@ -39,6 +39,10 @@ namespace SnakeGiuJu
         [SerializeField] float lineWidth = 0.36f;
         [SerializeField] float moveSpeed = 7.2f;
         [SerializeField] float minTurnRadius = 1.6f;
+        // Größer als die Linienbreite, damit das Gesicht auf dem Porträt erkennbar
+        // bleibt - aber nicht so groß, dass der Kopf beim Steuern die Sicht auf
+        // nahende Kurven verdeckt.
+        [SerializeField] float headScale = 2.4f;
 
         Camera cam;
         PowerUpField powerUps;
@@ -55,6 +59,7 @@ namespace SnakeGiuJu
         int selectedIndex;
         float widthFactor = 1f;
         float speedBoostUntil;
+        bool suppressPointerSteering;
 
         public GameState State { get; private set; } = GameState.CharacterSelect;
         public float Score => player?.Score ?? 0f;
@@ -89,8 +94,7 @@ namespace SnakeGiuJu
             cam.transform.rotation = Quaternion.identity;
 
             lineMaterial = new Material(lineShader) { name = "Line" };
-            headMaterial = new Material(lineShader) { name = "Head" };
-            headMaterial.SetColor("_BaseColor", headColor);
+            headMaterial = new Material(headShader) { name = "Head" };
 
             CreateBorder();
             CreateHead();
@@ -131,36 +135,49 @@ namespace SnakeGiuJu
         }
 
         /// <summary>
-        /// Charakterauswahl: links wählt den ersten, rechts den letzten Charakter – dieselbe
-        /// Geste wie das Lenken im Spiel. Ein Tipp wählt und startet in einem Zug, auf der
-        /// Tastatur wählen die Pfeiltasten und die Leertaste bestätigt.
+        /// Charakterauswahl: links wählt den ersten, rechts den letzten Charakter –
+        /// dieselbe Geste wie das Lenken im Spiel. Gestartet wird nur noch über den
+        /// eigenen Start-Button (oder Leertaste/Enter), ein Tipp irgendwo auf dem
+        /// Bildschirm wählt nur noch, startet aber nicht mehr automatisch mit.
         /// </summary>
         void UpdatePicker(float guardSeconds)
         {
             bool ready = Time.time - stateChangedAt >= guardSeconds;
 
-            // Der Schalter liegt in der Startflaeche, deshalb muss er zuerst geprueft
-            // werden: ein Tipp auf ihn soll umschalten statt die Runde zu starten.
-            if (ready && (SteeringInput.TogglePressed() || PressLandedOnSwitch()))
+            // Der Schalter muss zuerst geprueft werden: ein Tipp auf ihn soll
+            // umschalten, nicht die Charakterauswahl darunter beeinflussen.
+            if (ready && (SteeringInput.TogglePressed() || PressLandedOn(HudLayout.PowerUpSwitch)))
             {
                 TogglePowerUps();
+                // Ein Tipp bleibt ueber mehrere Frames "gehalten", bis er losgelassen
+                // wird. Ohne diese Sperre wuerde die noch gehaltene Zeigerposition auf
+                // dem Schalter im naechsten Frame als Lenkeingabe gelesen und die
+                // Charakterauswahl umspringen lassen.
+                suppressPointerSteering = true;
                 return;
             }
 
-            int steering = SteeringInput.ReadSteering();
-            if (steering != 0) selectedIndex = steering < 0 ? 0 : characters.Length - 1;
+            if (suppressPointerSteering)
+            {
+                if (!SteeringInput.IsPointerDown()) suppressPointerSteering = false;
+            }
+            else
+            {
+                int steering = SteeringInput.ReadSteering();
+                if (steering != 0) selectedIndex = steering < 0 ? 0 : characters.Length - 1;
+            }
 
-            if (!ready || !SteeringInput.ConfirmPressed()) return;
+            if (!ready) return;
+            if (!SteeringInput.KeyboardConfirmPressed() && !PressLandedOn(HudLayout.StartButton)) return;
 
             ResetRound();
             SetState(GameState.Playing);
         }
 
-        static bool PressLandedOnSwitch()
+        static bool PressLandedOn(System.Func<float, float, Rect> area)
         {
             if (!SteeringInput.TryGetPressPosition(out Vector2 press)) return false;
-            return HudLayout.PowerUpSwitch(Screen.width, Screen.height)
-                .Contains(HudLayout.ToGuiSpace(press));
+            return area(Screen.width, Screen.height).Contains(HudLayout.ToGuiSpace(press));
         }
 
         void TogglePowerUps()
@@ -203,7 +220,7 @@ namespace SnakeGiuJu
             float width = lineWidth * widthFactor;
             player.Radius = width * 0.5f;
             trail.SetWidth(width);
-            head.localScale = Vector3.one * (width * 1.3f);
+            head.localScale = Vector3.one * (width * headScale);
         }
 
         void Simulate()
@@ -246,6 +263,9 @@ namespace SnakeGiuJu
         {
             State = state;
             stateChangedAt = Time.time;
+            // Sperre nicht ueber Zustandswechsel hinweg mitschleppen - ein neuer
+            // Auswahlscreen soll nie mit einer Sperre aus einer vorigen Runde starten.
+            suppressPointerSteering = false;
             // Vor der ersten Runde gibt es noch nichts zu zeigen - der Kopf soll
             // nicht als loser Punkt hinter dem Auswahlscreen stehen.
             head.gameObject.SetActive(state != GameState.CharacterSelect);
@@ -263,6 +283,9 @@ namespace SnakeGiuJu
             // an und der uebernimmt die dann gueltige Breite.
             widthFactor = 1f;
             trail.Color = Selected.color;
+            // Fallback-Charaktere ohne Bild (siehe EnsureCharacters) zeigen die
+            // Standardtextur des Shaders statt eines fehlenden Porträts.
+            headMaterial.SetTexture("_MainTex", Selected.portrait);
             ApplyWidth();
 
             player.Spawn(Vector2.zero, Random.Range(0f, 360f));
@@ -344,8 +367,11 @@ namespace SnakeGiuJu
         {
             var go = new GameObject("Head");
             go.transform.SetParent(transform, false);
-            go.transform.localScale = Vector3.one * (lineWidth * 1.3f);
-            go.AddComponent<MeshFilter>().sharedMesh = MeshShapes.CreateDisc();
+            go.transform.localScale = Vector3.one * (lineWidth * headScale);
+            // Die Kreisform kommt vom Alphakanal des Porträts (siehe
+            // Art/prepare_avatar_photos.py), nicht von der Mesh-Form - ein
+            // texturiertes Quadrat reicht deshalb statt einer runden Mesh.
+            go.AddComponent<MeshFilter>().sharedMesh = MeshShapes.CreateQuad();
 
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = headMaterial;

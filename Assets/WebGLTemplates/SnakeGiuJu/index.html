@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -143,7 +143,7 @@
 
     var script = document.createElement("script");
     script.src = buildUrl + "/{{{ LOADER_FILENAME }}}";
-    script.onerror = function () { showError("Spieldateien konnten nicht geladen werden."); };
+    script.onerror = function () { showError("Could not load the game files."); };
     script.onload = function () {
       createUnityInstance(canvas, config, function (value) {
         progress.style.width = (100 * value) + "%";

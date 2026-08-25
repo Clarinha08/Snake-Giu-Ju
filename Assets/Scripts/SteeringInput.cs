@@ -41,28 +41,39 @@ namespace SnakeGiuJu
             return Mathf.Clamp(steering, -1, 1);
         }
 
-        /// <summary>Start bzw. Neustart: Leertaste, Enter oder ein Tippen/Klick.</summary>
-        public static bool ConfirmPressed()
+        /// <summary>
+        /// Tastaturkürzel für den Start-Button: Leertaste oder Enter. Ein reines
+        /// Tippen/Klicken zählt bewusst nicht mehr dazu - das würde jeden Tipp zur
+        /// Charakterauswahl (auch auf den Schalter) sofort zum Rundenstart machen.
+        /// Der Start-Button prüft Zeigerklicks separat über seine eigene Fläche.
+        /// </summary>
+        public static bool KeyboardConfirmPressed()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard != null && (keyboard.spaceKey.wasPressedThisFrame ||
-                                     keyboard.enterKey.wasPressedThisFrame ||
-                                     keyboard.numpadEnterKey.wasPressedThisFrame))
-            {
-                return true;
-            }
+            return keyboard != null && (keyboard.spaceKey.wasPressedThisFrame ||
+                                        keyboard.enterKey.wasPressedThisFrame ||
+                                        keyboard.numpadEnterKey.wasPressedThisFrame);
+        }
 
+        /// <summary>
+        /// Ob gerade irgendein Zeiger (Finger oder Maustaste) gehalten wird, unabhängig
+        /// von der Position. Damit kann ein einzelner Tipp, der auf einer Schaltfläche
+        /// begonnen hat, für seine gesamte Dauer von der Lenkungsauswertung
+        /// ausgenommen werden statt nur für den ersten Frame.
+        /// </summary>
+        public static bool IsPointerDown()
+        {
             Touchscreen touchscreen = Touchscreen.current;
             if (touchscreen != null)
             {
                 foreach (var touch in touchscreen.touches)
                 {
-                    if (touch.press.wasPressedThisFrame) return true;
+                    if (touch.press.isPressed) return true;
                 }
             }
 
             Mouse mouse = Mouse.current;
-            return mouse != null && mouse.leftButton.wasPressedThisFrame;
+            return mouse != null && mouse.leftButton.isPressed;
         }
 
         /// <summary>

@@ -4,7 +4,7 @@ namespace SnakeGiuJu
 {
     /// <summary>
     /// Flächen, die das HUD zeichnet und die Spiellogik treffen muss. Beide Seiten
-    /// rechnen hier, damit der Schalter nicht woanders sitzt als er reagiert.
+    /// rechnen hier, damit ein Element nicht woanders sitzt als es reagiert.
     /// </summary>
     public static class HudLayout
     {
@@ -14,7 +14,15 @@ namespace SnakeGiuJu
             float height = Mathf.Min(screenWidth, screenHeight * 0.75f) * 0.075f;
             // Breit genug für Beschriftung, Zustandstext und Schaltbahn nebeneinander.
             float width = Mathf.Min(height * 7.6f, screenWidth * 0.9f);
-            return new Rect((screenWidth - width) * 0.5f, screenHeight * 0.875f, width, height);
+            return new Rect((screenWidth - width) * 0.5f, screenHeight * 0.66f, width, height);
+        }
+
+        /// <summary>Start-Button, in GUI-Koordinaten (Ursprung oben links).</summary>
+        public static Rect StartButton(float screenWidth, float screenHeight)
+        {
+            float height = Mathf.Min(screenWidth, screenHeight * 0.75f) * 0.11f;
+            float width = Mathf.Min(screenWidth * 0.7f, height * 5f);
+            return new Rect((screenWidth - width) * 0.5f, screenHeight * 0.87f, width, height);
         }
 
         /// <summary>Rechnet eine Zeigerposition (Ursprung unten links) in GUI-Koordinaten um.</summary>

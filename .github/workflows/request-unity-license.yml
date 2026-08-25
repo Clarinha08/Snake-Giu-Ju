@@ -1,0 +1,22 @@
+name: Unity-Lizenzdatei anfordern (einmalig)
+
+# Nur von Hand auslösbar: erzeugt eine Aktivierungsanfrage (.alf) zum Hochladen
+# auf license.unity3d.com. Die zurückerhaltene .ulf wird zum Secret
+# UNITY_LICENSE - danach wird dieser Workflow nicht mehr gebraucht.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  request:
+    name: Aktivierungsanfrage erzeugen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: game-ci/unity-request-activation-file@v2
+        id: activation
+        with:
+          unityVersion: 6000.5.7f1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unity-activation-file
+          path: ${{ steps.activation.outputs.filePath }}

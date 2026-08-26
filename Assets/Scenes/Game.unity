@@ -298,8 +298,8 @@ MonoBehaviour:
     portrait: {fileID: 2800000, guid: 93b43b551f0e4f17af317d3e62a56583, type: 3}
   arenaHeight: 20
   cellSize: 0.05
-  lineWidth: 0.36
-  moveSpeed: 7.2
+  lineWidth: 0.24
+  moveSpeed: 6.12
   minTurnRadius: 1.6
 --- !u!4 &1747985266
 Transform:

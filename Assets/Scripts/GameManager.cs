@@ -36,8 +36,11 @@ namespace SnakeGiuJu
         [SerializeField] float cellSize = 0.05f;
 
         [Header("Schlange")]
-        [SerializeField] float lineWidth = 0.36f;
-        [SerializeField] float moveSpeed = 7.2f;
+        // Duenner als anfangs (0.36): auf dem kleinen Mobile-Bildschirm fuellte die
+        // dickere Linie die Arena zu schnell, die Runde war zu kurz.
+        [SerializeField] float lineWidth = 0.24f;
+        // 15% langsamer als anfangs (7.2): auf dem Handy wirkte das Tempo zu hoch.
+        [SerializeField] float moveSpeed = 6.12f;
         [SerializeField] float minTurnRadius = 1.6f;
         // Größer als die Linienbreite, damit das Gesicht auf dem Porträt erkennbar
         // bleibt - aber nicht so groß, dass der Kopf beim Steuern die Sicht auf

@@ -9,6 +9,13 @@ namespace SnakeGiuJu
     public sealed class Hud : MonoBehaviour
     {
         static readonly Color Muted = new Color(0.72f, 0.77f, 0.85f, 1f);
+        // Bewusst unabhaengig vom gewaehlten Charakter: Steuerhinweis und Start-Button
+        // sollen nicht bei jeder Auswahl zwischen Pink und Blau umspringen. Dunkles,
+        // saturiertes Gruen (~5.5:1 Kontrast zu weisser Schrift, WCAG AA fuer
+        // Fliesstext braucht 4.5:1) statt des vorherigen hellen Mint/Tuerkis
+        // (~2.1:1) - das ging zu sehr Richtung Blau und war mit weissem "START"
+        // kaum lesbar.
+        static readonly Color StartGreen = new Color(0.125f, 0.470f, 0.196f, 1f);
 
         GameManager game;
         GUIStyle score;
@@ -47,10 +54,12 @@ namespace SnakeGiuJu
             float margin = Mathf.Min(w, h) * 0.04f;
             var bar = new Rect(margin, margin, w - margin * 2f, h * 0.06f);
 
-            // Der Akzent folgt dem gewählten Charakter.
+            // Der Akzent folgt dem gewählten Charakter - nur für Punktestand und
+            // Auswahlrahmen. Steuerhinweis und Start-Button bleiben bewusst neutral
+            // (weiß / grün), sonst würde die halbe Oberfläche bei jeder Auswahl
+            // zwischen Pink und Blau umspringen.
             Color accent = game.Selected.color;
             score.normal.textColor = accent;
-            call.normal.textColor = accent;
 
             if (game.State != GameState.CharacterSelect)
             {
@@ -91,7 +100,7 @@ namespace SnakeGiuJu
             DrawPicker(w, h, 0.44f);
             DrawPowerUpSwitch(w, h, accent);
             GUI.Label(TextRect(w, h, 0.78f, 0.06f), SteeringHint(), call);
-            DrawStartButton(w, h, accent);
+            DrawStartButton(w, h);
         }
 
         /// <summary>Beide Charaktere nebeneinander, der gewählte hervorgehoben.</summary>
@@ -187,12 +196,12 @@ namespace SnakeGiuJu
         /// startet" - so lassen sich Charakter und Power-up-Modus in Ruhe wählen,
         /// ohne aus Versehen schon loszufahren.
         /// </summary>
-        void DrawStartButton(float w, float h, Color accent)
+        void DrawStartButton(float w, float h)
         {
             Rect rect = HudLayout.StartButton(w, h);
 
             Color previous = GUI.color;
-            GUI.color = accent;
+            GUI.color = StartGreen;
             GUI.DrawTexture(rect, startButtonTex);
             GUI.color = previous;
 
@@ -274,10 +283,12 @@ namespace SnakeGiuJu
             // eines Handys so groß, dass Überschrift und Punktestand kollidieren.
             int baseSize = Mathf.Max(11, Mathf.RoundToInt(Mathf.Min(Screen.width, Screen.height * 0.75f) * 0.04f));
 
+            // Ein einziger Schriftschnitt für das ganze HUD (siehe Kommentar oben):
+            // fontStyle bleibt überall auf dem Default (Normal), Hierarchie kommt
+            // allein aus Größe und Farbe.
             score = new GUIStyle(GUI.skin.label)
             {
                 fontSize = baseSize,
-                fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.UpperLeft
             };
 
@@ -287,7 +298,6 @@ namespace SnakeGiuJu
             title = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(baseSize * 2.2f),
-                fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter
             };
             title.normal.textColor = Color.white;
@@ -302,17 +312,16 @@ namespace SnakeGiuJu
 
             pickHeading = new GUIStyle(subtitle)
             {
-                fontSize = Mathf.RoundToInt(baseSize * 1.1f),
-                fontStyle = FontStyle.Bold
+                fontSize = Mathf.RoundToInt(baseSize * 1.1f)
             };
             pickHeading.normal.textColor = Color.white;
 
             call = new GUIStyle(subtitle);
+            call.normal.textColor = Color.white;
 
             characterName = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(baseSize * 1.2f),
-                fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.UpperCenter
             };
 
@@ -327,14 +336,12 @@ namespace SnakeGiuJu
 
             switchState = new GUIStyle(switchLabel)
             {
-                fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleRight
             };
 
             startLabel = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(baseSize * 1.3f),
-                fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter
             };
             startLabel.normal.textColor = Color.white;
@@ -342,7 +349,6 @@ namespace SnakeGiuJu
             pickup = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(baseSize * 0.95f),
-                fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleLeft
             };
 

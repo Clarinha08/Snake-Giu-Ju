@@ -36,9 +36,20 @@ namespace SnakeGiuJu
 
         public void Restart(Vector2 start)
         {
+            Clear();
+            StartChunk(start);
+        }
+
+        /// <summary>
+        /// Entfernt die gezeichnete Linie, ohne sofort eine neue zu beginnen - für den
+        /// Rücksprung zur Charakterauswahl, wo noch keine neue Rundenposition feststeht.
+        /// </summary>
+        public void Clear()
+        {
             foreach (GameObject chunk in chunks) Object.Destroy(chunk);
             chunks.Clear();
-            StartChunk(start);
+            points.Clear();
+            active = null;
         }
 
         /// <summary>Hängt einen Punkt an, sobald er weit genug vom letzten entfernt ist.</summary>

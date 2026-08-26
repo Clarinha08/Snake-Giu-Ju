@@ -16,6 +16,10 @@ namespace SnakeGiuJu
         // (~2.1:1) - das ging zu sehr Richtung Blau und war mit weissem "START"
         // kaum lesbar.
         static readonly Color StartGreen = new Color(0.125f, 0.470f, 0.196f, 1f);
+        // Dieselbe Farbe wie der Kamera-Hintergrund (siehe GameManager), als Karte
+        // hinter dem Game-Over-Screen - deckt die zu Ende gefahrene Linie ab, statt
+        // sie mit den Ergebnis-Texten ueberlappen zu lassen.
+        static readonly Color PanelBackground = new Color(0.043f, 0.055f, 0.078f, 0.94f);
 
         GameManager game;
         GUIStyle score;
@@ -28,16 +32,22 @@ namespace SnakeGiuJu
         GUIStyle switchLabel;
         GUIStyle switchState;
         GUIStyle startLabel;
+        GUIStyle resultReason;
+        GUIStyle resultScore;
+        GUIStyle resultBest;
+        GUIStyle backLink;
         GUIStyle pickup;
         GUIStyle zoneLeft;
         GUIStyle zoneRight;
 
-        // Abgerundete Formen für Schalter und Start-Button, prozedural erzeugt statt
-        // als Bilddatei mitgeliefert - siehe UITextures. Bei jeder Größenänderung neu
-        // gebaut, zusammen mit den GUIStyles unten.
+        // Abgerundete Formen für Schalter, CTA-Button und Game-Over-Karten, prozedural
+        // erzeugt statt als Bilddatei mitgeliefert - siehe UITextures. Bei jeder
+        // Größenänderung neu gebaut, zusammen mit den GUIStyles unten.
         Texture2D switchTrackTex;
         Texture2D switchKnobTex;
-        Texture2D startButtonTex;
+        Texture2D ctaButtonTex;
+        Texture2D panelTex;
+        Texture2D statCardTex;
 
         int builtForHeight = -1;
         int builtForWidth = -1;
@@ -61,18 +71,23 @@ namespace SnakeGiuJu
             Color accent = game.Selected.color;
             score.normal.textColor = accent;
 
-            if (game.State != GameState.CharacterSelect)
+            // Auf dem Game-Over-Screen steht Score/Best schon groß in der eigenen
+            // Karte - die kleine Kopfzeile würde sich nur doppeln.
+            if (game.State != GameState.GameOver)
             {
-                GUI.Label(bar, $"Score  {game.Score:0}", score);
+                if (game.State == GameState.Playing) GUI.Label(bar, $"Score  {game.Score:0}", score);
+                GUI.Label(bar, $"Best  {game.BestScore:0}", best);
             }
-            GUI.Label(bar, $"Best  {game.BestScore:0}", best);
 
             switch (game.State)
             {
                 case GameState.CharacterSelect:
                     GUI.Label(TextRect(w, h, 0.05f, 0.10f), "SNAKE GIU JU", title);
                     GUI.Label(TextRect(w, h, 0.17f, 0.07f), "Pick a player", pickHeading);
-                    DrawPickAndPlay(w, h, accent);
+                    DrawPicker(w, h, 0.44f);
+                    DrawPowerUpSwitch(w, h, accent);
+                    GUI.Label(TextRect(w, h, 0.78f, 0.06f), SteeringHint(), call);
+                    DrawButton(HudLayout.StartButton(w, h), StartGreen, "START", startLabel);
                     break;
 
                 case GameState.Playing:
@@ -82,25 +97,60 @@ namespace SnakeGiuJu
                     break;
 
                 case GameState.GameOver:
-                    string reason = game.Cause == DeathCause.Wall ? "Hit the wall" : "Hit the trail";
-                    GUI.Label(TextRect(w, h, 0.05f, 0.10f), "OUT", title);
-                    GUI.Label(TextRect(w, h, 0.17f, 0.07f), $"{reason} · {game.Score:0} points", subtitle);
-                    DrawPickAndPlay(w, h, accent);
+                    DrawGameOverScreen(w, h, accent);
                     break;
             }
         }
 
         /// <summary>
-        /// Der gemeinsame untere Teil von Auswahl- und Game-Over-Screen: Avatare,
-        /// Power-up-Schalter, Steuerhinweis und Start-Button - in genau dieser
-        /// Reihenfolge, damit die Steuerung erklärt ist, bevor sie gebraucht wird.
+        /// Eigener Screen statt der Charakterauswahl darunter: keine Avatare mehr (die
+        /// gehören jetzt ausschließlich zum Start-Screen), dafür eine deckende Karte,
+        /// die die zu Ende gefahrene Linie im Hintergrund abdeckt statt sie mit den
+        /// Ergebnis-Texten überlappen zu lassen.
         /// </summary>
-        void DrawPickAndPlay(float w, float h, Color accent)
+        void DrawGameOverScreen(float w, float h, Color accent)
         {
-            DrawPicker(w, h, 0.44f);
-            DrawPowerUpSwitch(w, h, accent);
-            GUI.Label(TextRect(w, h, 0.78f, 0.06f), SteeringHint(), call);
-            DrawStartButton(w, h);
+            DrawTexture(new Rect(w * 0.06f, h * 0.06f, w * 0.88f, h * 0.84f), panelTex, PanelBackground);
+
+            GUI.Label(TextRect(w, h, 0.10f, 0.13f), "Ooops", title);
+
+            string reason = game.Cause == DeathCause.Wall ? "You hit the wall" : "You hit the trail";
+            GUI.Label(TextRect(w, h, 0.235f, 0.05f), reason, resultReason);
+
+            DrawResultCard(w, h, accent);
+
+            DrawButton(HudLayout.PlayAgainButton(w, h), StartGreen, "PLAY AGAIN", startLabel);
+
+            Rect backRect = HudLayout.BackToStartLink(w, h);
+            GUI.Label(backRect, "Back to start", backLink);
+        }
+
+        /// <summary>Porträt der gespielten Figur plus Score/Best, groß und für den Anlass etwas spielerisch.</summary>
+        void DrawResultCard(float w, float h, Color accent)
+        {
+            var card = new Rect(w * 0.14f, h * 0.32f, w * 0.72f, h * 0.20f);
+            DrawTexture(card, statCardTex, new Color(1f, 1f, 1f, 0.07f));
+
+            float pad = card.height * 0.12f;
+            float portraitSize = card.height - pad * 2f;
+            var portraitRect = new Rect(card.x + pad, card.y + pad, portraitSize, portraitSize);
+
+            if (game.Selected.portrait != null)
+            {
+                GUI.DrawTexture(portraitRect, game.Selected.portrait, ScaleMode.ScaleToFit);
+            }
+            else
+            {
+                DrawRect(portraitRect, accent);
+            }
+
+            float textX = portraitRect.xMax + pad;
+            var scoreRect = new Rect(textX, card.y + card.height * 0.12f, card.xMax - textX - pad, card.height * 0.5f);
+            var bestRect = new Rect(textX, card.y + card.height * 0.62f, card.xMax - textX - pad, card.height * 0.3f);
+
+            resultScore.normal.textColor = accent;
+            GUI.Label(scoreRect, $"Score {game.Score:0}", resultScore);
+            GUI.Label(bestRect, $"Best {game.BestScore:0}", resultBest);
         }
 
         /// <summary>Beide Charaktere nebeneinander, der gewählte hervorgehoben.</summary>
@@ -191,21 +241,11 @@ namespace SnakeGiuJu
             GUI.Label(stateRect, on ? "ON" : "OFF", switchState);
         }
 
-        /// <summary>
-        /// Der eigentliche Rundenstart. Ein eigener Button statt "Tipp irgendwo
-        /// startet" - so lassen sich Charakter und Power-up-Modus in Ruhe wählen,
-        /// ohne aus Versehen schon loszufahren.
-        /// </summary>
-        void DrawStartButton(float w, float h)
+        /// <summary>Gefüllter, abgerundeter Button - für Start, Play again & Co.</summary>
+        void DrawButton(Rect rect, Color color, string label, GUIStyle style)
         {
-            Rect rect = HudLayout.StartButton(w, h);
-
-            Color previous = GUI.color;
-            GUI.color = StartGreen;
-            GUI.DrawTexture(rect, startButtonTex);
-            GUI.color = previous;
-
-            GUI.Label(rect, "START", startLabel);
+            DrawTexture(rect, ctaButtonTex, color);
+            GUI.Label(rect, label, style);
         }
 
         /// <summary>Restlaufzeit des Temposchubs, damit der Punkteschub nachvollziehbar ist.</summary>
@@ -259,9 +299,14 @@ namespace SnakeGiuJu
 
         static void DrawRect(Rect rect, Color color)
         {
+            DrawTexture(rect, Texture2D.whiteTexture, color);
+        }
+
+        static void DrawTexture(Rect rect, Texture texture, Color tint)
+        {
             Color previous = GUI.color;
-            GUI.color = color;
-            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = tint;
+            GUI.DrawTexture(rect, texture);
             GUI.color = previous;
         }
 
@@ -346,6 +391,28 @@ namespace SnakeGiuJu
             };
             startLabel.normal.textColor = Color.white;
 
+            resultReason = new GUIStyle(subtitle);
+
+            resultScore = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 1.5f),
+                alignment = TextAnchor.MiddleLeft
+            };
+
+            resultBest = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 0.95f),
+                alignment = TextAnchor.MiddleLeft
+            };
+            resultBest.normal.textColor = Muted;
+
+            backLink = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(baseSize * 1.0f),
+                alignment = TextAnchor.MiddleCenter
+            };
+            backLink.normal.textColor = Muted;
+
             pickup = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(baseSize * 0.95f),
@@ -384,9 +451,20 @@ namespace SnakeGiuJu
             int knobPx = Mathf.Max(2, Mathf.RoundToInt(knobSize));
             switchKnobTex = UITextures.RoundedRect(knobPx, knobPx, knobPx * 0.5f);
 
-            Rect startRect = HudLayout.StartButton(w, h);
-            startButtonTex = UITextures.RoundedRect(
-                Mathf.RoundToInt(startRect.width), Mathf.RoundToInt(startRect.height), startRect.height * 0.32f);
+            // Start- und Play-again-Button haben dieselbe Größenformel (siehe
+            // HudLayout) und teilen sich deshalb eine Textur.
+            Rect ctaRect = HudLayout.StartButton(w, h);
+            ctaButtonTex = UITextures.RoundedRect(
+                Mathf.RoundToInt(ctaRect.width), Mathf.RoundToInt(ctaRect.height), ctaRect.height * 0.32f);
+
+            var panelRect = new Rect(0, 0, w * 0.88f, h * 0.84f);
+            panelTex = UITextures.RoundedRect(
+                Mathf.RoundToInt(panelRect.width), Mathf.RoundToInt(panelRect.height),
+                Mathf.Min(panelRect.width, panelRect.height) * 0.05f);
+
+            var cardRect = new Rect(0, 0, w * 0.72f, h * 0.20f);
+            statCardTex = UITextures.RoundedRect(
+                Mathf.RoundToInt(cardRect.width), Mathf.RoundToInt(cardRect.height), cardRect.height * 0.2f);
         }
     }
 }

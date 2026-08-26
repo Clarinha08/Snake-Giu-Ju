@@ -25,6 +25,23 @@ namespace SnakeGiuJu
             return new Rect((screenWidth - width) * 0.5f, screenHeight * 0.87f, width, height);
         }
 
+        /// <summary>„Play again“-Button auf dem Game-Over-Screen, startet mit denselben
+        /// Einstellungen (Charakter, Power-ups) neu, die zu Rundenbeginn galten.</summary>
+        public static Rect PlayAgainButton(float screenWidth, float screenHeight)
+        {
+            float height = Mathf.Min(screenWidth, screenHeight * 0.75f) * 0.11f;
+            float width = Mathf.Min(screenWidth * 0.7f, height * 5f);
+            return new Rect((screenWidth - width) * 0.5f, screenHeight * 0.60f, width, height);
+        }
+
+        /// <summary>Textlink zurück zur Charakterauswahl auf dem Game-Over-Screen.</summary>
+        public static Rect BackToStartLink(float screenWidth, float screenHeight)
+        {
+            float height = Mathf.Min(screenWidth, screenHeight * 0.75f) * 0.07f;
+            float width = screenWidth * 0.7f;
+            return new Rect((screenWidth - width) * 0.5f, screenHeight * 0.75f, width, height);
+        }
+
         /// <summary>Rechnet eine Zeigerposition (Ursprung unten links) in GUI-Koordinaten um.</summary>
         public static Vector2 ToGuiSpace(Vector2 screenPosition)
         {

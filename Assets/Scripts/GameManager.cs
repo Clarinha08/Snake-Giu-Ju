@@ -123,7 +123,7 @@ namespace SnakeGiuJu
             switch (State)
             {
                 case GameState.CharacterSelect:
-                    UpdatePicker(0f);
+                    UpdateCharacterSelect();
                     break;
 
                 case GameState.Playing:
@@ -132,7 +132,7 @@ namespace SnakeGiuJu
 
                 case GameState.GameOver:
                     // Kurze Sperre, damit der Tipp, der zum Tod geführt hat, nicht sofort neu startet.
-                    UpdatePicker(0.5f);
+                    UpdateGameOver(0.5f);
                     break;
             }
         }
@@ -143,13 +143,11 @@ namespace SnakeGiuJu
         /// eigenen Start-Button (oder Leertaste/Enter), ein Tipp irgendwo auf dem
         /// Bildschirm wählt nur noch, startet aber nicht mehr automatisch mit.
         /// </summary>
-        void UpdatePicker(float guardSeconds)
+        void UpdateCharacterSelect()
         {
-            bool ready = Time.time - stateChangedAt >= guardSeconds;
-
             // Der Schalter muss zuerst geprueft werden: ein Tipp auf ihn soll
             // umschalten, nicht die Charakterauswahl darunter beeinflussen.
-            if (ready && (SteeringInput.TogglePressed() || PressLandedOn(HudLayout.PowerUpSwitch)))
+            if (SteeringInput.TogglePressed() || PressLandedOn(HudLayout.PowerUpSwitch))
             {
                 TogglePowerUps();
                 // Ein Tipp bleibt ueber mehrere Frames "gehalten", bis er losgelassen
@@ -170,11 +168,37 @@ namespace SnakeGiuJu
                 if (steering != 0) selectedIndex = steering < 0 ? 0 : characters.Length - 1;
             }
 
-            if (!ready) return;
             if (!SteeringInput.KeyboardConfirmPressed() && !PressLandedOn(HudLayout.StartButton)) return;
 
             ResetRound();
             SetState(GameState.Playing);
+        }
+
+        /// <summary>
+        /// Game-Over-Screen: "Play again" startet mit denselben Einstellungen (Charakter,
+        /// Power-up-Modus) neu, die zu Rundenbeginn galten - hier wird nichts mehr
+        /// ausgewaehlt. "Back to Start" fuehrt zurueck zur Charakterauswahl, dort und nur
+        /// dort laesst sich der Charakter wechseln.
+        /// </summary>
+        void UpdateGameOver(float guardSeconds)
+        {
+            if (Time.time - stateChangedAt < guardSeconds) return;
+
+            if (SteeringInput.KeyboardConfirmPressed() || PressLandedOn(HudLayout.PlayAgainButton))
+            {
+                ResetRound();
+                SetState(GameState.Playing);
+                return;
+            }
+
+            if (PressLandedOn(HudLayout.BackToStartLink))
+            {
+                // Die zu Ende gefahrene Linie soll nicht mit in die Auswahl genommen
+                // werden - sonst waere dort dieselbe Unordnung zu sehen, die den
+                // Game-Over-Screen bisher schon unuebersichtlich gemacht hat.
+                trail.Clear();
+                SetState(GameState.CharacterSelect);
+            }
         }
 
         static bool PressLandedOn(System.Func<float, float, Rect> area)

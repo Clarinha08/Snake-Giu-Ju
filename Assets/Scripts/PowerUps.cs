@@ -16,8 +16,9 @@ namespace SnakeGiuJu
     /// </summary>
     public static class PowerUpRules
     {
-        public const float MinSpawnInterval = 5f;
-        public const float MaxSpawnInterval = 10f;
+        // Halbiert (vorher 5-10s): das Warten bis zum ersten Power-up wirkte zu lang.
+        public const float MinSpawnInterval = 2.5f;
+        public const float MaxSpawnInterval = 5f;
         public const float Lifetime = 20f;
         public const float Radius = 0.85f;
 

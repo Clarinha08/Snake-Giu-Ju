@@ -145,8 +145,12 @@ namespace SnakeGiuJu
         /// </summary>
         void UpdateCharacterSelect()
         {
-            // Der Schalter muss zuerst geprueft werden: ein Tipp auf ihn soll
-            // umschalten, nicht die Charakterauswahl darunter beeinflussen.
+            // Schalter und Start-Button muessen zuerst geprueft werden: ein Tipp auf
+            // eines der beiden soll nicht gleichzeitig als Lenkeingabe fuer die
+            // Charakterauswahl darunter zaehlen. Der Start-Button sitzt mittig und
+            // reicht dadurch in beide Bildschirmhaelften - ohne diese Reihenfolge
+            // wuerde ein Tipp auf seine rechte Haelfte im selben Frame lautlos noch
+            // auf den anderen Charakter umschalten, bevor die Runde losgeht.
             if (SteeringInput.TogglePressed() || PressLandedOn(HudLayout.PowerUpSwitch))
             {
                 TogglePowerUps();
@@ -155,6 +159,13 @@ namespace SnakeGiuJu
                 // dem Schalter im naechsten Frame als Lenkeingabe gelesen und die
                 // Charakterauswahl umspringen lassen.
                 suppressPointerSteering = true;
+                return;
+            }
+
+            if (SteeringInput.KeyboardConfirmPressed() || PressLandedOn(HudLayout.StartButton))
+            {
+                ResetRound();
+                SetState(GameState.Playing);
                 return;
             }
 
@@ -167,11 +178,6 @@ namespace SnakeGiuJu
                 int steering = SteeringInput.ReadSteering();
                 if (steering != 0) selectedIndex = steering < 0 ? 0 : characters.Length - 1;
             }
-
-            if (!SteeringInput.KeyboardConfirmPressed() && !PressLandedOn(HudLayout.StartButton)) return;
-
-            ResetRound();
-            SetState(GameState.Playing);
         }
 
         /// <summary>
@@ -193,10 +199,12 @@ namespace SnakeGiuJu
 
             if (PressLandedOn(HudLayout.BackToStartLink))
             {
-                // Die zu Ende gefahrene Linie soll nicht mit in die Auswahl genommen
-                // werden - sonst waere dort dieselbe Unordnung zu sehen, die den
+                // Weder die zu Ende gefahrene Linie noch ein zum Rundenende noch
+                // aktiver Power-up-Ring sollen mit in die Auswahl genommen werden -
+                // sonst waere dort dieselbe Unordnung zu sehen, die den
                 // Game-Over-Screen bisher schon unuebersichtlich gemacht hat.
                 trail.Clear();
+                powerUps.Clear();
                 SetState(GameState.CharacterSelect);
             }
         }
@@ -290,9 +298,12 @@ namespace SnakeGiuJu
         {
             State = state;
             stateChangedAt = Time.time;
-            // Sperre nicht ueber Zustandswechsel hinweg mitschleppen - ein neuer
-            // Auswahlscreen soll nie mit einer Sperre aus einer vorigen Runde starten.
-            suppressPointerSteering = false;
+            // Ein Zeigerdruck, der schon im vorigen Zustand begann (etwa der "Back to
+            // start"-Tipp auf dem Game-Over-Screen), bleibt oft noch ein paar Frames
+            // gehalten. Ohne diese Sperre wuerde er in der frisch betretenen
+            // Charakterauswahl sofort wieder als Lenkeingabe gelesen und den
+            // Charakter umspringen lassen, bevor man ueberhaupt etwas ausgewaehlt hat.
+            suppressPointerSteering = state == GameState.CharacterSelect && SteeringInput.IsPointerDown();
             // Vor der ersten Runde gibt es noch nichts zu zeigen - der Kopf soll
             // nicht als loser Punkt hinter dem Auswahlscreen stehen.
             head.gameObject.SetActive(state != GameState.CharacterSelect);

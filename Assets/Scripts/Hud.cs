@@ -37,8 +37,6 @@ namespace SnakeGiuJu
         GUIStyle resultBest;
         GUIStyle backLink;
         GUIStyle pickup;
-        GUIStyle zoneLeft;
-        GUIStyle zoneRight;
 
         // Abgerundete Formen für Schalter, CTA-Button und Game-Over-Karten, prozedural
         // erzeugt statt als Bilddatei mitgeliefert - siehe UITextures. Bei jeder
@@ -82,7 +80,7 @@ namespace SnakeGiuJu
             switch (game.State)
             {
                 case GameState.CharacterSelect:
-                    GUI.Label(TextRect(w, h, 0.05f, 0.10f), "SNAKE GIU JU", title);
+                    GUI.Label(TextRect(w, h, 0.05f, 0.10f), "Snake it easy", title);
                     GUI.Label(TextRect(w, h, 0.17f, 0.07f), "Pick a player", pickHeading);
                     DrawPicker(w, h, 0.44f);
                     DrawPowerUpSwitch(w, h, accent);
@@ -93,7 +91,6 @@ namespace SnakeGiuJu
                 case GameState.Playing:
                     DrawBoost(w, h);
                     DrawPickup(w, h);
-                    DrawZoneHints();
                     break;
 
                 case GameState.GameOver:
@@ -273,17 +270,6 @@ namespace SnakeGiuJu
             title.normal.textColor = Color.white;
         }
 
-        void DrawZoneHints()
-        {
-            if (!SteeringInput.HasTouchscreen) return;
-
-            float w = Screen.width;
-            float h = Screen.height;
-            // Nur ASCII: der eingebaute IMGUI-Font hat keine Pfeil-Glyphen.
-            GUI.Label(new Rect(0f, h * 0.90f, w * 0.5f, h * 0.08f), "<<  left", zoneLeft);
-            GUI.Label(new Rect(w * 0.5f, h * 0.90f, w * 0.5f, h * 0.08f), "right  >>", zoneRight);
-        }
-
         static string SteeringHint()
         {
             return SteeringInput.HasTouchscreen
@@ -418,14 +404,6 @@ namespace SnakeGiuJu
                 fontSize = Mathf.RoundToInt(baseSize * 0.95f),
                 alignment = TextAnchor.MiddleLeft
             };
-
-            zoneLeft = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = Mathf.RoundToInt(baseSize * 0.85f),
-                alignment = TextAnchor.MiddleCenter
-            };
-            zoneLeft.normal.textColor = new Color(1f, 1f, 1f, 0.35f);
-            zoneRight = new GUIStyle(zoneLeft);
 
             BuildRoundedTextures();
         }
